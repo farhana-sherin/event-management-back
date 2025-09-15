@@ -1,0 +1,65 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+.pip-selfcheck.json
+
+# Django static and media files (optional if generated)
+media/
+
+# Django migrations (optional - you can include them if you prefer)
+*/migrations/*.pyc
+*/migrations/__pycache__/
+# Uncomment the next line if you want to ignore all migration files:
+# */migrations/*.py
+
+# SQLite database file
+*.sqlite3
+
+# Django secret key or environment files
+.env
+.env.*
+secrets.json
+
+# VSCode / IDE settings
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# MacOS and Linux system files
+.DS_Store
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+
+# Coverage reports
+htmlcov/
+.coverage
+.tox/
+coverage.xml
+nosetests.xml
+pytest_cache/
+
+# Node stuff (if using npm for frontend)
+node_modules/
+package-lock.json
+yarn.lock
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
