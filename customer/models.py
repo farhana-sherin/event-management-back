@@ -7,7 +7,8 @@ from organizer.models import *
 
 class Customer(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    phone = models.CharField(max_length=15, blank=True, null=True)
+
+    
         
 
     def __str__(self):
@@ -15,8 +16,9 @@ class Customer(models.Model):
 
 
 
-
+#add to wishlist model
 class Wishlist(models.Model):
+    
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
     event = models.ForeignKey(Event, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)

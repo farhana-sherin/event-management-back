@@ -6,6 +6,10 @@ def create_notification(customer, title, message, organizer=None, sender_role="A
         customer=customer,
         title=title,
         message=message,
+
         organizer=organizer,
+        
+
         sender_role=sender_role
+
     )
