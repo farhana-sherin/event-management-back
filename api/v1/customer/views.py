@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework import status
+from datetime import date
 
 from django.conf import settings
 import stripe
@@ -215,7 +216,7 @@ def create_booking(request, id):
         tickets_count=tickets_count,
         total_amount=total_amount,
         status="PENDING",
-        qr_code=qr_code,
+        qr_code_text=qr_code,
     )
 
     create_notification(
@@ -502,3 +503,29 @@ def banner_list(request):
         "message": "Banner list"
     })
 
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def upcoming_events(request):
+   
+    today = date.today()
+    events = Event.objects.filter(start_date__gte=today, is_active=True).order_by('start_date')
+
+   
+
+    # Optional: limit number of events (e.g., 3 for index)
+    limit = request.query_params.get('limit')
+    if limit:
+        try:
+            limit = int(limit)
+            events = events[:limit]
+        except ValueError:
+            pass 
+
+    serializer = EventSerializer(events, many=True, context={"request": request})
+    return Response({
+        "status_code": 6000,
+        "data": serializer.data,
+        "message": "Upcoming events fetched successfully"
+    }, status=status.HTTP_200_OK)

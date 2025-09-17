@@ -38,6 +38,7 @@ class Event(models.Model):
     available_seats = models.PositiveIntegerField()
     created_at = models.DateTimeField(auto_now_add=True)
     images = models.FileField(upload_to="event_images/", blank=True, null=True)
+    qr_code_text = models.TextField(blank=True, null=True)
     is_active = models.BooleanField(default=False)
 
     class Meta:

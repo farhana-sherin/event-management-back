@@ -17,25 +17,29 @@ class OrganizerSerializer(ModelSerializer):
         
 
 class EventSerializer(ModelSerializer):
+    qr_code_text = serializers.CharField(read_only=True) 
+    organizer = serializers.PrimaryKeyRelatedField(read_only=True) 
     class Meta:
         model = Event   
         fields = [
             'id',
+            'organizer',
             'title',
-            'short_description',  # Added short_description field
+            'short_description',
             'description',
             'category',
             'location',
-            'start_date',  # Change from start_at to start_date
-            'start_time',  # Change from start_at to start_time
-            'end_date',    # Change from end_at to end_date
-            'end_time',    # Change from end_at to end_time
+            'start_date',
+            'start_time',
+            'end_date',
+            'end_time',
             'price',
             'total_seats',
             'available_seats',
             'images',
-            'is_active',   # Add is_active if needed
+            'qr_code_text',
+            'is_active',
+            'created_at',
         ]
-
 
 

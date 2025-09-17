@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken 
+import uuid
 
 from organizer.models import *
 
@@ -31,7 +32,7 @@ def register_organizer(request):
     if User.objects.filter(email=email).exists():
         return Response({
             "status_code": 6001,
-            "message": "User already exists"
+            "message": "User already exits"
         })
 
     user = User.objects.create_user(
@@ -41,6 +42,7 @@ def register_organizer(request):
         first_name=first_name,
         last_name=last_name,
         phone=phone,
+        
     )
     user.is_eventorganizer = True   
     user.save()
@@ -66,7 +68,6 @@ def logout(request):
     request.user.auth_token.delete()
     return Response({"status_code": 6000, "message": "Organizer logged out successfully"})
 
-
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def create_event(request):
@@ -75,15 +76,19 @@ def create_event(request):
     if not organizer:
         return Response({
             "status_code": 6001,
-            "errors": {"organizer": ["Organizer profile not found for this user"]}
+            "errors": {"organizer": ["Organizer profile is not found"]}
         }, status=status.HTTP_400_BAD_REQUEST)
 
     serializer = EventSerializer(data=request.data, context={"request": request})
     if serializer.is_valid():
-        event = serializer.save(organizer=organizer) 
+        # generate a unique QR text for the event
+        qr_code_text = f"EVENT-{uuid.uuid4()}"
+
+        event = serializer.save(organizer=organizer, qr_code_text=qr_code_text)
+
         return Response({
             "status_code": 6000,
-            "data": serializer.data,
+            "data": EventSerializer(event, context={"request": request}).data,
             "message": "Event created"
         })
 
@@ -221,8 +226,8 @@ def create_faq(request):
     serializer = FAQSerializer(data=request.data)
     if serializer.is_valid():
         serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.data)
+    return Response(serializer.errors)
 
 
 @api_view(["PUT"])
@@ -239,8 +244,17 @@ def update_faq(request, id):
 
 @api_view(["DELETE"])
 @permission_classes([IsAuthenticated])
+#addd
 def delete_faq(request, id):
     faq = FAQ.objects.get(id=id)
     faq.delete()
+    
+    
     return Response({"message": "FAQ deleted"}, status=status.HTTP_204_NO_CONTENT)
+
+
+
+
+
+
 

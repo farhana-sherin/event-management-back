@@ -17,7 +17,7 @@ class BookingSerializer(serializers.ModelSerializer):
         model = Booking
         
         fields = [
-            "id","customer","event","tickets_count","total_amount","status","qr_code","created_at"]
+            "id","customer","event","tickets_count","total_amount","status","qr_code_text","created_at"]
 
 
 class WishlistSerializer(serializers.ModelSerializer):

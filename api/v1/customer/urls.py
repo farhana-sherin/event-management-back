@@ -32,6 +32,9 @@ urlpatterns = [
     path("rating-event/<int:id>/", views.rating_event, name="rate_event"),
     path("rated-events/<int:id>/", views.rate_event, name="rated_events"),
     path("banners/", views.banner_list, name="banner-list"),
+    path("upcoming/event/", views.upcoming_events, name="upcoming-events"),
+
+
 
 
 

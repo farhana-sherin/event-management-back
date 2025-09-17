@@ -29,7 +29,7 @@ from api.v1.payment.serializer import *
 def create_payment(request,id):
    
     user = request.user
-    booking = Booking.objects.filter(id=id, user=user).first()
+    booking = Booking.objects.filter(id=id, customer__user=user).first()
     if not booking:
         return Response({"status_code": 6001, "message": "Booking not found"})
 
@@ -54,8 +54,8 @@ def create_payment(request,id):
         "status_code": 6000,
         "data": {
             "client_secret": payment_intent.client_secret,
-                "payment_intent_id": payment_intent.id,
-                "amount": booking.total_amount
+            "payment_intent_id": payment_intent.id,
+            "amount": booking.total_amount
         },
         "message": "Payment initiated successfully"
     })
@@ -92,7 +92,7 @@ def confirm_payment(request, id):
         defaults={
             "customer": booking.customer,
             "provider": "Stripe",
-            "payment_id": f"STRIPE-{booking.id}-{booking.qr_code}",
+            "payment_id": f"STRIPE-{booking.id}",
             "status": "SUCCESS",
             "amount": booking.total_amount,
             "receipt_url": "",
