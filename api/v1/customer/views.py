@@ -173,7 +173,7 @@ def logout(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def events_list(request):
     events = Event.objects.all()
     serializer = EventSerializer(events, many=True, context={"request": request})
@@ -184,7 +184,7 @@ def events_list(request):
     })
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def event_detail_customer(request, id):
     event = Event.objects.get(id=id)
     serializer = EventSerializer(event, context={"request": request})
@@ -529,3 +529,17 @@ def upcoming_events(request):
         "data": serializer.data,
         "message": "Upcoming events fetched successfully"
     }, status=status.HTTP_200_OK)
+
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def featured_events(request):
+    # Fetch only active events, limit to 3
+    events = Event.objects.filter(is_active=True).order_by('-id')[:6]
+    serializer = EventSerializer(events, many=True, context={"request": request})
+    return Response({
+        "status_code": 6000,
+        "data": serializer.data,
+        "message": "Featured events list"
+    })
