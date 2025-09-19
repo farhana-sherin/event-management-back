@@ -34,12 +34,11 @@ class EventSerializer(ModelSerializer):
             'end_date',
             'end_time',
             'price',
-            'total_seats',
-            'available_seats',
             'images',
             'qr_code_text',
             'is_active',
             'created_at',
-        ]
+            'ticket_count'
+                   ]
 
 

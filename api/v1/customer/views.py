@@ -1,3 +1,6 @@
+from email import message
+from ntpath import isabs
+from api.v1 import customer
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -15,6 +18,7 @@ from customer.models import *
 from organizer.models import *
 from api.v1.organizer.serializer import *
 from api.v1.customer.serializer import *
+from api.v1.payment.serializer import*
 from customer.utils import *
 from django.utils import timezone
 
@@ -99,7 +103,7 @@ def register(request):
 
 
 @api_view(['GET'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def profile(request):
     user = request.user
     customer = Customer.objects.get(user=user)
@@ -117,7 +121,7 @@ def profile(request):
 
 
 @api_view(['PUT'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def update_profile(request):
     user = request.user
     user.first_name = request.data.get('first_name', user.first_name)
@@ -173,7 +177,7 @@ def logout(request):
 
 
 @api_view(["GET"])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def events_list(request):
     events = Event.objects.all()
     serializer = EventSerializer(events, many=True, context={"request": request})
@@ -184,7 +188,7 @@ def events_list(request):
     })
 
 @api_view(["GET"])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def event_detail_customer(request, id):
     event = Event.objects.get(id=id)
     serializer = EventSerializer(event, context={"request": request})
@@ -196,40 +200,34 @@ def event_detail_customer(request, id):
 
 
 
-@api_view(["POST"])
+@api_view(["GET"])
 @permission_classes([IsAuthenticated])
-def create_booking(request, id):
-    customer = Customer.objects.get(user=request.user)
-    event = Event.objects.get(id=id)
-
-    tickets_count = request.data.get("tickets_count")
-    if not tickets_count:
-        return Response({"status_code": 6001, "message": "tickets_count is required"})
-
-    tickets_count = int(tickets_count)
-    total_amount = tickets_count * event.price
-    qr_code = str(uuid.uuid4())
-
-    booking = Booking.objects.create(
-        customer=customer,
-        event=event,
-        tickets_count=tickets_count,
-        total_amount=total_amount,
-        status="PENDING",
-        qr_code_text=qr_code,
-    )
-
-    create_notification(
-        customer,
-        "Booking Created",
-        f"Your booking for '{event.title}' has been created with {tickets_count} tickets. Pending payment.",
-        sender_role="ADMIN" 
-    )
+def booking_detail(request, booking_id):
+    try:
+        booking = Booking.objects.get(id=booking_id, customer__user=request.user)
+        return Response({
+            "status_code": 6000,
+            "data": {
+                "id": booking.id,
+                "event": booking.event.title,
+                "tickets": booking.tickets_count,
+                "qr_code_text": booking.qr_code_text,
+                "booking_date": booking.booking_date,
+                "payment_status": booking.payment.status if hasattr(booking, 'payment') else "PENDING",
+            },
+            "message": "Booking detail"
+        })
+    except Booking.DoesNotExist:
+        return Response({"status_code": 4004, "message": "Booking not found"})
 
 
 
-    serializer = BookingSerializer(booking, context={"request": request})
-    return Response({"status_code": 6000, "data": serializer.data, "message": "Booking created"})
+
+
+
+
+    
+
 
 
 @api_view(["POST"])

@@ -6,6 +6,10 @@ app_name = 'payment'
 
 
 urlpatterns = [
-    path("payment/create/<int:id>/",views.create_payment,name="payment"),
-    path("payment/confirmed/<int:id>/",views.confirm_payment,name="payment_confirmed"),
+   path("bookings/create/", views.create_booking, name="create-booking"),
+    path("payments/create-checkout-session/<int:booking_id>/", views.create_checkout_session, name="create-checkout-session"),
+    path("payments/webhook/", views.stripe_webhook, name="stripe-webhook"),
+    path("increment/<int:event_id>/",views.increment_ticket,name="increment"),
+    path("decrement/<int:event_id>/",views.decrement_ticket,name="decrement"),
+
 ]

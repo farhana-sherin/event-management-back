@@ -11,13 +11,7 @@ class CustomerSerializer(serializers.ModelSerializer):
         model = Customer
         fields = ['id', 'user']
 
-class BookingSerializer(serializers.ModelSerializer):
-    event = EventSerializer()
-    class Meta:
-        model = Booking
-        
-        fields = [
-            "id","customer","event","tickets_count","total_amount","status","qr_code_text","created_at"]
+
 
 
 class WishlistSerializer(serializers.ModelSerializer):

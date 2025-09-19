@@ -34,8 +34,8 @@ class Event(models.Model):
     end_date = models.DateField(blank=True, null=True)
     end_time = models.TimeField(blank=True, null=True)
     price = models.DecimalField(max_digits=10, decimal_places=2)
-    total_seats = models.PositiveIntegerField()
-    available_seats = models.PositiveIntegerField()
+    ticket_count = models.PositiveIntegerField()
+    
     created_at = models.DateTimeField(auto_now_add=True)
     images = models.FileField(upload_to="event_images/", blank=True, null=True)
     qr_code_text = models.TextField(blank=True, null=True)

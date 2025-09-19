@@ -8,21 +8,14 @@ from api.v1.organizer.serializer import *
 
 
 
-class PaymentSerializer(serializers.ModelSerializer):
-    booking_id = serializers.IntegerField(source="booking.id", read_only=True)
-  
+class BookingSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Booking
+        fields = "__all__"
 
+class PaymentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Payment
-        fields = [
-            "id",
-            "booking_id",
-            "provider",
-            "payment_id",
-            "status",
-            "amount",
-            "receipt_url",
-            
-        ]
+        fields = "__all__"
 
         
