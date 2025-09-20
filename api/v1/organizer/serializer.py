@@ -16,29 +16,21 @@ class OrganizerSerializer(ModelSerializer):
         fields = ['id', 'user']
         
 
-class EventSerializer(ModelSerializer):
-    qr_code_text = serializers.CharField(read_only=True) 
-    organizer = serializers.PrimaryKeyRelatedField(read_only=True) 
-    class Meta:
-        model = Event   
-        fields = [
-            'id',
-            'organizer',
-            'title',
-            'short_description',
-            'description',
-            'category',
-            'location',
-            'start_date',
-            'start_time',
-            'end_date',
-            'end_time',
-            'price',
-            'images',
-            'qr_code_text',
-            'is_active',
-            'created_at',
-            'ticket_count'
-                   ]
+class EventSerializer(serializers.ModelSerializer):
+    is_wishlisted = serializers.SerializerMethodField()
 
+    class Meta:
+        model = Event
+        fields = "__all__"  # keep existing fields
+        # add "is_wishlisted" explicitly if you’re not using __all__
+
+    def get_is_wishlisted(self, obj):
+        request = self.context.get("request")
+        if request and request.user.is_authenticated:
+            try:
+                customer = Customer.objects.get(user=request.user)
+                return Wishlist.objects.filter(customer=customer, event=obj).exists()
+            except Customer.DoesNotExist:
+                return False
+        return False
 

@@ -151,13 +151,15 @@ def search_events(request):
     start_date = request.data.get("start_date")
     end_date = request.data.get("end_date")
 
-    events = Event.objects.all()
+    today = timezone.now().date()
+    events = Event.objects.filter(end_date__gte=today)  # Only ongoing/upcoming events
+
     if keyword:
         events = events.filter(title__icontains=keyword)
     if category:
         events = events.filter(category__icontains=category)
     if start_date and end_date:
-        events = events.filter(start_at__date__range=[start_date, end_date])
+        events = events.filter(start_date__range=[start_date, end_date])
 
     serializer = EventSerializer(events, many=True, context={"request": request})
     return Response({
@@ -175,16 +177,32 @@ def logout(request):
 
 
 
-
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def events_list(request):
-    events = Event.objects.all()
+    user = request.user
+
+    # Optional: get the customer object if needed
+    try:
+        customer = Customer.objects.get(user=user)
+    except Customer.DoesNotExist:
+        customer = None  # or return an error if you want
+
+    # Get optional category filter
+    category = request.query_params.get("category")
+
+    # Filter upcoming events (end_date >= today)
+    today = timezone.now().date()
+    events = Event.objects.filter(end_date__gte=today)
+
+    if category and category != "All":
+        events = events.filter(category__iexact=category)
+
     serializer = EventSerializer(events, many=True, context={"request": request})
     return Response({
         "status_code": 6000,
         "data": serializer.data,
-        "message": "Events list"
+        "message": "Upcoming events list"
     })
 
 @api_view(["GET"])
@@ -205,16 +223,10 @@ def event_detail_customer(request, id):
 def booking_detail(request, booking_id):
     try:
         booking = Booking.objects.get(id=booking_id, customer__user=request.user)
+        serializer = BookingDetailSerializer(booking, context={"request": request})
         return Response({
             "status_code": 6000,
-            "data": {
-                "id": booking.id,
-                "event": booking.event.title,
-                "tickets": booking.tickets_count,
-                "qr_code_text": booking.qr_code_text,
-                "booking_date": booking.booking_date,
-                "payment_status": booking.payment.status if hasattr(booking, 'payment') else "PENDING",
-            },
+            "data": serializer.data,
             "message": "Booking detail"
         })
     except Booking.DoesNotExist:
@@ -224,27 +236,60 @@ def booking_detail(request, booking_id):
 
 
 
-
-
-    
-
-
-
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
-def cancel_booking(request, id):
-    booking = Booking.objects.get(id=id, customer__user=request.user)
-    booking.status = "CANCELLED"
-    booking.save()
+def cancel_booking(request, booking_id):
+    try:
+        booking = Booking.objects.get(id=booking_id, customer__user=request.user)
+        payment = getattr(booking, "payment", None)
+        refund_amount = 0
 
-    create_notification(
-        booking.customer,
-        "Booking Cancelled",
-        f"Your booking for '{booking.event.title}' has been cancelled.",
-        sender_role="ADMIN"
-    )
+        if payment and payment.status == "SUCCESS":
+            # Ensure amount exists
+            if payment.amount is None:
+                return Response({"error": "Payment amount not found"}, status=400)
 
-    return Response({"status_code": 6000, "message": "Booking cancelled"})
+            # Refund amount after cancellation fee (20)
+            refund_amount = max(float(payment.amount) - 20, 0)
+
+            # Stripe refund
+            if payment.payment_intent_id:
+                stripe.Refund.create(
+                    payment_intent=payment.payment_intent_id,
+                    amount=int(refund_amount * 100)  # Stripe expects smallest currency unit
+                )
+
+            # Update payment status
+            payment.status = "REFUNDED"
+            payment.amount_refunded = refund_amount
+            payment.save()
+
+        # Update booking status
+        booking.status = "CANCELLED"
+        booking.save()
+
+        # Notification
+        create_notification(
+            customer=booking.customer,
+            title="Booking Cancelled",
+            message=f"Your booking for '{booking.event.title}' has been cancelled. Refund Amount: ₹{refund_amount}",
+            sender_role="ADMIN"
+        )
+
+        return Response({
+            "status_code": 6000,
+            "message": "Booking cancelled successfully",
+            "refund_amount": refund_amount
+        })
+
+    except Booking.DoesNotExist:
+        return Response({"error": "Booking not found"}, status=404)
+    except stripe.error.StripeError as e:
+        return Response({"error": f"Stripe error: {str(e)}"}, status=400)
+    except Exception as e:
+        return Response({"error": str(e)}, status=400)
+
+
 
 
 @api_view(["GET"])
@@ -530,12 +575,21 @@ def upcoming_events(request):
 
 
 
+
+
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def featured_events(request):
-    # Fetch only active events, limit to 3
-    events = Event.objects.filter(is_active=True).order_by('-id')[:6]
+    today = timezone.now().date()
+
+    # Fetch upcoming active events, sorted by start date, limit to 6
+    events = Event.objects.filter(
+        is_active=True,
+        end_date__gte=today  # event hasn’t ended yet
+    ).order_by('start_date')[:6]
+
     serializer = EventSerializer(events, many=True, context={"request": request})
+
     return Response({
         "status_code": 6000,
         "data": serializer.data,

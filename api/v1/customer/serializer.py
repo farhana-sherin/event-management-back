@@ -24,7 +24,7 @@ class WishlistSerializer(serializers.ModelSerializer):
 class NotificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notification
-        fields = ["id", "title", "message", "is_read", "type","created_at"]
+        fields = ["id", "title", "message", "is_read", "created_at"]
 
 class PaymentSerializer(serializers.ModelSerializer):
     booking_id = serializers.IntegerField(source="booking.id", read_only=True)
@@ -60,14 +60,46 @@ class EventRatingSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'event', 'user', 'rating', 'review'
         ]
-
 class BannerSerializer(serializers.ModelSerializer):
-    event_id = serializers.IntegerField(source="event.id", read_only=True)
-    event_title = serializers.CharField(source="event.title", read_only=True)
+    image = serializers.ImageField()  # or use SerializerMethodField
 
     class Meta:
         model = Banner
-        fields = ["id", "title", "description", "image", "event_id", "event_title"]
-       
+        fields = ['id', 'title', 'description', 'image']
 
-        
+
+class BookingDetailSerializer(serializers.ModelSerializer):
+    event = EventSerializer(read_only=True)
+    amount_paid = serializers.SerializerMethodField()
+    payment_status = serializers.SerializerMethodField()
+    refund_amount = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Booking
+        fields = [
+            "id",
+            "customer",
+            "event",
+            "tickets_count",
+            "booking_date",
+            "qr_code_text",
+            "amount_paid",
+            "payment_status",
+            "refund_amount",
+        ]
+
+    def get_amount_paid(self, obj):
+        if hasattr(obj, "payment") and obj.payment:
+            return obj.payment.amount
+        return 0
+
+    def get_payment_status(self, obj):
+        if hasattr(obj, "payment") and obj.payment:
+            return obj.payment.status
+        return "PENDING"
+
+    def get_refund_amount(self, obj):
+        if hasattr(obj, "payment") and obj.payment:
+            return getattr(obj.payment, "amount_refunded", 0)
+        return 0
+

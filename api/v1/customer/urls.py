@@ -14,10 +14,10 @@ urlpatterns = [
     path('searchby/category/',views.search_events,name='search'),
     path('events/list/',views.events_list,name="events"),
     path('events/detail/<int:id>/', views.event_detail_customer, name='event_detail'),
-    path("bookings/<int:booking_id>/", views.booking_detail, name="booking-detail"),
+    path("booking/detail/<int:booking_id>/", views.booking_detail, name="booking-detail"),
 
     
-    path("booking/cancel/<int:id>/", views.cancel_booking, name="cancel_booking"),
+    path("booking/cancel/<int:booking_id>/", views.cancel_booking, name="cancel_booking"),
     path("view/all/booking",views.my_bookings,name="view_booking"),
     path('wishlist/add/<int:id>/', views.add_to_wishlist, name='add_to_wishlist'),
     path('wishlist/remove/<int:id>/', views.remove_from_wishlist, name='remove_from_wishlist'),

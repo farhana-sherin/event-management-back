@@ -9,6 +9,9 @@ from api.v1.organizer.serializer import *
 
 
 class BookingSerializer(serializers.ModelSerializer):
+    event = EventSerializer(read_only=True)
+    
+
     class Meta:
         model = Booking
         fields = "__all__"
