@@ -7,6 +7,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework import status
 from datetime import date
+from datetime import datetime
 
 from django.conf import settings
 import stripe
@@ -21,6 +22,7 @@ from api.v1.customer.serializer import *
 from api.v1.payment.serializer import*
 from customer.utils import *
 from django.utils import timezone
+from api.v1.admin.serializer import BannerSerializer
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -104,25 +106,67 @@ def register(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
-def profile(request):
+def profile(request, id):
     user = request.user
-    customer = Customer.objects.get(user=user)
+
+   
+    customer = None
+    organizer = None
+    admin_obj = None
+
+    try:
+        customer = Customer.objects.get(user=user)
+    except Customer.DoesNotExist:
+        pass
+
+    try:
+        organizer = Organizer.objects.get(user=user)
+    except Organizer.DoesNotExist:
+        pass
+
+    try:
+        admin_obj = getattr(user, "admin_profile", None)  
+    except:
+        pass
+
+    # Determine role
+    if admin_obj or getattr(user, "is_admin", False):
+        role = "admin"
+    elif organizer or getattr(user, "is_eventorganizer", False):
+        role = "organizer"
+    elif customer or getattr(user, "is_customer", False):
+        role = "customer"
+    else:
+        role = "user"
+
+    
+    data = {
+        "role": role,
+        "email": user.email,
+        "username": user.username,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "phone": getattr(user, "phone", None)
+    }
+
+    if customer:
+        data["customer"] = CustomerSerializer(customer).data
+    if organizer:
+        data["organizer"] = {"id": organizer.id}  
+    if admin_obj:
+        data["admin"] = {"id": admin_obj.id}  
+
     return Response({
         "status_code": 6000,
-        "data": {
-            "first_name": user.first_name,
-            "last_name": user.last_name,
-            "username": user.username,
-            "email": user.email,
-            "phone": user.phone
-        },
+        "data": data,
         "message": "Profile retrieved successfully"
     })
 
-
 @api_view(['PUT'])
 @permission_classes([IsAuthenticated])
-def update_profile(request):
+def update_profile(request,id):
+    user = request.user
+    customer = Customer.objects.get(user=user,id=id)
     user = request.user
     user.first_name = request.data.get('first_name', user.first_name)
     user.last_name = request.data.get('last_name', user.last_name)
@@ -152,7 +196,7 @@ def search_events(request):
     end_date = request.data.get("end_date")
 
     today = timezone.now().date()
-    events = Event.objects.filter(end_date__gte=today)  # Only ongoing/upcoming events
+    events = Event.objects.filter(end_date__gte=today)  
 
     if keyword:
         events = events.filter(title__icontains=keyword)
@@ -182,16 +226,15 @@ def logout(request):
 def events_list(request):
     user = request.user
 
-    # Optional: get the customer object if needed
+    
     try:
         customer = Customer.objects.get(user=user)
     except Customer.DoesNotExist:
-        customer = None  # or return an error if you want
+        customer = None  
 
-    # Get optional category filter
     category = request.query_params.get("category")
 
-    # Filter upcoming events (end_date >= today)
+   
     today = timezone.now().date()
     events = Event.objects.filter(end_date__gte=today)
 
@@ -245,30 +288,30 @@ def cancel_booking(request, booking_id):
         refund_amount = 0
 
         if payment and payment.status == "SUCCESS":
-            # Ensure amount exists
+          
             if payment.amount is None:
                 return Response({"error": "Payment amount not found"}, status=400)
 
-            # Refund amount after cancellation fee (20)
+            
             refund_amount = max(float(payment.amount) - 20, 0)
 
-            # Stripe refund
+          
             if payment.payment_intent_id:
                 stripe.Refund.create(
                     payment_intent=payment.payment_intent_id,
-                    amount=int(refund_amount * 100)  # Stripe expects smallest currency unit
+                    amount=int(refund_amount * 100)  
                 )
 
-            # Update payment status
+          
             payment.status = "REFUNDED"
             payment.amount_refunded = refund_amount
             payment.save()
 
-        # Update booking status
+      
         booking.status = "CANCELLED"
         booking.save()
 
-        # Notification
+       
         create_notification(
             customer=booking.customer,
             title="Booking Cancelled",
@@ -295,9 +338,33 @@ def cancel_booking(request, booking_id):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def my_bookings(request):
-    bookings = Booking.objects.filter(customer__user=request.user)
-    serializer = BookingSerializer(bookings, many=True, context={"request": request})
-    return Response({"status_code": 6000, "data": serializer.data, "message": "My bookings"})
+    bookings = Booking.objects.filter(customer__user=request.user).select_related("event")
+    today = date.today()  
+
+    latest_bookings = []
+    past_bookings = []
+
+    for booking in bookings:
+        event = booking.event
+        serialized = BookingSerializer(booking, context={"request": request}).data
+        
+    
+        serialized["can_review"] = event.start_date < today
+
+        if event.start_date >= today:
+            latest_bookings.append(serialized)
+        else:
+            past_bookings.append(serialized)
+
+    return Response({
+        "status_code": 6000,
+        "message": "My bookings retrieved successfully",
+        "data": {
+            "latest_bookings": latest_bookings,
+            "past_bookings": past_bookings
+        }
+    })
+
 
 
 
@@ -330,13 +397,22 @@ def my_wishlist(request):
 
 
 
-@api_view(["GET"])
+@api_view(['GET'])
 @permission_classes([IsAuthenticated])
-def my_notifications(request):
-    customer = Customer.objects.get(user=request.user)
-    notifications = Notification.objects.filter(customer=customer)
+def customer_notifications(request):
+    try:
+        customer = Customer.objects.get(user=request.user)
+    except Customer.DoesNotExist:
+        return Response({"status_code": 6001, "data": [], "message": "Customer not found"})
+
+    
+    notifications = Notification.objects.filter(customer=customer).order_by('-created_at')
     serializer = NotificationSerializer(notifications, many=True)
-    return Response({"status_code": 6000, "data": serializer.data, "message": "Notifications retrieved successfully"})
+    return Response({
+        "status_code": 6000,
+        "data": serializer.data,
+        "message": "Customer notifications retrieved successfully"
+    })
 
 
 @api_view(["GET"])
@@ -421,7 +497,7 @@ def past_events(request):
 
     bookings = Booking.objects.filter(customer=customer)
 
-    # Make a list of events from the bookings
+   
     events = []
     for booking in bookings:
         if booking.event.end_at < timezone.now():   
@@ -442,7 +518,7 @@ def past_events(request):
 
 
 
-# ✅ Customer - Create Ticket
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def create_ticket(request):
@@ -488,55 +564,11 @@ def list_faqs(request):
     serializer = FAQSerializer(faqs, many=True)
     return Response(serializer.data)
 
+
+
+
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
-def rating_event(request, id):
-    event = Event.objects.get(id=id)
-    ratings = event.ratings.all()
-
-    
-    serializer = EventRatingSerializer(ratings, many=True)
-
-    if ratings.exists():
-        total = sum(r.rating for r in ratings)
-        average = round(total / ratings.count(), 2)
-    else:
-        average = 0
-
-    return Response({
-        "status_code": 6000,
-        "data": {
-            "event": event.title,
-            "average_rating": average,
-            "total_ratings": ratings.count(),
-            "ratings": serializer.data
-        },
-        "message": "Event ratings fetched successfully"
-    })
-
-@api_view(["POST"])
-@permission_classes([IsAuthenticated])
-def rate_event(request, id):
-    event = Event.objects.get(id=id)
-
-    rating = EventRating(
-        event=event,
-        user=request.user,
-        rating=request.data.get("rating"),
-        review=request.data.get("review", "")
-    )
-    rating.save()
-
-    serializer = EventRatingSerializer(rating)
-
-    return Response({
-        "status_code": 6000,
-        "data": serializer.data,
-        "message": "Rating submitted successfully"
-    })
-    
-@api_view(["GET"])
-@permission_classes([AllowAny])  # customers can see banners without login
+@permission_classes([AllowAny])  
 def banner_list(request):
     banners = Banner.objects.all().order_by("-created_at")
     serializer = BannerSerializer(banners, many=True, context={"request": request})
@@ -557,7 +589,6 @@ def upcoming_events(request):
 
    
 
-    # Optional: limit number of events (e.g., 3 for index)
     limit = request.query_params.get('limit')
     if limit:
         try:
@@ -571,7 +602,7 @@ def upcoming_events(request):
         "status_code": 6000,
         "data": serializer.data,
         "message": "Upcoming events fetched successfully"
-    }, status=status.HTTP_200_OK)
+    })
 
 
 
@@ -582,16 +613,95 @@ def upcoming_events(request):
 def featured_events(request):
     today = timezone.now().date()
 
-    # Fetch upcoming active events, sorted by start date, limit to 6
+  
     events = Event.objects.filter(
         is_active=True,
-        end_date__gte=today  # event hasn’t ended yet
+        end_date__gte=today  
     ).order_by('start_date')[:6]
 
     serializer = EventSerializer(events, many=True, context={"request": request})
 
-    return Response({
+    return Response(
+        {
         "status_code": 6000,
         "data": serializer.data,
         "message": "Featured events list"
+    }
+    )
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def become_organizer(request):
+    user = request.user
+    if user.is_eventorganizer:
+        return Response({"status_code": 6001, "message": "Already an organizer"})
+    
+    user.is_eventorganizer = True
+    user.save()
+
+    Organizer.objects.create(user=user)
+
+    return Response({
+        "status_code": 6000,
+        "message": "You are now an organizer!"
+    })
+
+
+
+
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def rate_event(request, event_id):
+    try:
+        event = Event.objects.get(id=event_id)
+    except Event.DoesNotExist:
+        return Response({"message": "Event not found"})
+
+
+    if event.end_date and event.end_date > timezone.now().date():
+        return Response(
+            {"status_code": 6001, "message": "You can only review after the event has ended"},
+            
+        )
+
+    rating_value = request.data.get("rating")
+    review = request.data.get("review", "")
+
+    if not rating_value:
+        return Response({"message": "Rating is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+    rating_obj, created = EventRating.objects.update_or_create(
+        event=event,
+        user=request.user,
+        defaults={"rating": rating_value, "review": review},
+    )
+
+    serializer = EventRatingSerializer(rating_obj)
+    return Response({
+        "status_code": 6000,
+        "message": "Rating created" if created else "Rating updated",
+        "data": serializer.data,
+    })
+
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_event_ratings(request, event_id):
+    try:
+        event = Event.objects.get(id=event_id)
+    except Event.DoesNotExist:
+        return Response({"message": "Event not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    ratings = EventRating.objects.filter(event=event).select_related("user")
+    serializer = EventRatingSerializer(ratings, many=True)
+
+    return Response({
+        "status_code": 6000,
+        "message": "Ratings retrieved successfully",
+        "data": serializer.data,
     })

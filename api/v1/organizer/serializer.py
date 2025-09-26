@@ -10,19 +10,19 @@ from organizer.models import *
 
 
 
+
 class OrganizerSerializer(ModelSerializer):
     class Meta:
         model =  Organizer
         fields = ['id', 'user']
-        
-
 class EventSerializer(serializers.ModelSerializer):
     is_wishlisted = serializers.SerializerMethodField()
+    organizer_email = serializers.EmailField(source="organizer.user.email", read_only=True)
 
     class Meta:
         model = Event
-        fields = "__all__"  # keep existing fields
-        # add "is_wishlisted" explicitly if you’re not using __all__
+        fields = "__all__"
+        read_only_fields = ["organizer", "qr_code_text", "qr_code_image"]
 
     def get_is_wishlisted(self, obj):
         request = self.context.get("request")
@@ -33,4 +33,3 @@ class EventSerializer(serializers.ModelSerializer):
             except Customer.DoesNotExist:
                 return False
         return False
-

@@ -21,7 +21,6 @@ from api.v1.payment.serializer import *
 from customer.utils import create_notification
 from django.utils import timezone
 
-# 1️⃣ Create Booking
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def create_booking(request):
@@ -31,6 +30,14 @@ def create_booking(request):
     tickets_count = int(data.get("tickets_count", 1))
     total_price = event.price * tickets_count
 
+  
+    if Booking.objects.filter(customer=customer, event=event).exists():
+        return Response({
+            "status": 6001,
+            "message": "You have already booked this event."
+        }, status=400)
+
+    # Create booking
     booking = Booking.objects.create(
         customer=customer,
         event=event,
@@ -40,11 +47,11 @@ def create_booking(request):
     return Response({
         "status": 6000,
         "booking_id": booking.id,
-        "total_price": total_price
+        "total_price": total_price,
+        "message": "Booking created successfully"
     })
 
 
-# 2️⃣ Increment Ticket
 @api_view(["PATCH"])
 @permission_classes([IsAuthenticated])
 def increment_ticket(request, event_id):
@@ -63,7 +70,7 @@ def increment_ticket(request, event_id):
     })
 
 
-# 3️⃣ Decrement Ticket
+
 @api_view(["PATCH"])
 @permission_classes([IsAuthenticated])
 def decrement_ticket(request, event_id):
@@ -83,7 +90,6 @@ def decrement_ticket(request, event_id):
     })
 
 
-# 4️⃣ Create Stripe Checkout Session
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def create_checkout_session(request, booking_id):
@@ -160,7 +166,7 @@ def stripe_webhook(request):
             booking.qr_code_text = f"BOOKING:{booking.id}|EVENT:{booking.event.id}|TICKETS:{booking.tickets_count}|EMAIL:{booking.customer.user.email}"
             booking.save()
 
-            # ✅ Send notification
+        
             create_notification(
                 customer=booking.customer,
                 title="Booking Successful",
@@ -191,7 +197,7 @@ def verify_payment(request, booking_id, session_id):
                 booking.qr_code_text = f"BOOKING:{booking.id}|EVENT:{booking.event.title}|TICKETS:{booking.tickets_count}|EMAIL:{booking.customer.user.email}|PRICE:{booking.event.price}"
                 booking.save()
 
-            # ✅ Send notification
+          
             create_notification(
                 customer=booking.customer,
                 title="Booking Successful",

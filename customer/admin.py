@@ -8,5 +8,7 @@ admin.site.register(SupportTicket)
 admin.site.register(FAQ)
 admin.site.register(EventRating)
 admin.site.register(Banner)
+admin.site.register(TicketReply)
+
 
 

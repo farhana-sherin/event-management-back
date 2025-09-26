@@ -8,7 +8,9 @@ urlpatterns = [
     
     path('api/v1/customer/',include("api.v1.customer.urls",namespace='customer')),
     path('api/v1/organizer/', include("api.v1.organizer.urls", namespace='organizer')),
-    path('api/v1/payment/',include("api.v1.payment.urls",namespace="payment"))
+    path('api/v1/payment/',include("api.v1.payment.urls",namespace="payment")),
+    path('api/v1/admin/',include("api.v1.admin.urls",namespace="admin"))
+
 
 
 

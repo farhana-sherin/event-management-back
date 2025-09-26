@@ -39,18 +39,28 @@ class Notification(models.Model):
         ("ORGANIZER", "Organizer"),
     ]
 
-    sender_role = models.CharField(max_length=20, choices=ROLE_CHOICES) 
-    organizer = models.ForeignKey(Organizer, null=True, blank=True, on_delete=models.CASCADE)  
-    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name="notifications")
+    sender_role = models.CharField(max_length=20, choices=ROLE_CHOICES)
+    organizer = models.ForeignKey(
+        "organizer.Organizer", null=True, blank=True, on_delete=models.CASCADE
+    )
+    customer = models.ForeignKey(
+        "customer.Customer", null=True, blank=True, on_delete=models.CASCADE, related_name="notifications"
+    )
 
     title = models.CharField(max_length=255)
     message = models.TextField()
     is_read = models.BooleanField(default=False)
-
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.sender_role} → {self.customer.user.email} : {self.title}"
+        # Safely get the recipient
+        if self.customer and self.customer.user:
+            recipient = self.customer.user.email
+        elif self.organizer and self.organizer.user:
+            recipient = self.organizer.user.email
+        else:
+            recipient = "Unknown"
+        return f"{self.sender_role} → {recipient} : {self.title}"
 
 
 
@@ -109,6 +119,15 @@ class Banner(models.Model):
 
     def __str__(self):
         return self.title
+
+class TicketReply(models.Model):
+    ticket = models.ForeignKey(SupportTicket, on_delete=models.CASCADE, related_name="replies")
+    sender = models.ForeignKey(User, on_delete=models.CASCADE)
+    message = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Reply by {self.sender.username} on {self.ticket.subject}"
 
 
 
