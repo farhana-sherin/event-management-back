@@ -23,6 +23,7 @@ from api.v1.payment.serializer import*
 from customer.utils import *
 from django.utils import timezone
 from api.v1.admin.serializer import BannerSerializer
+from api.v1.customer.recommendation import get_event_recommendations
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -161,31 +162,54 @@ def profile(request, id):
         "data": data,
         "message": "Profile retrieved successfully"
     })
-
 @api_view(['PUT'])
 @permission_classes([IsAuthenticated])
-def update_profile(request,id):
+def update_profile(request, id):
     user = request.user
-    customer = Customer.objects.get(user=user,id=id)
-    user = request.user
+
+    # Update User fields
     user.first_name = request.data.get('first_name', user.first_name)
     user.last_name = request.data.get('last_name', user.last_name)
     user.username = request.data.get('username', user.username)
     user.email = request.data.get('email', user.email)
     user.phone = request.data.get('phone', user.phone)
     user.save()
+
+    # Get related roles
+    customer = Customer.objects.filter(user=user, id=id).first()
+    organizer = Organizer.objects.filter(user=user).first()
+    admin_obj = getattr(user, "admin_profile", None)
+
+    if admin_obj or getattr(user, "is_admin", False):
+        role = "admin"
+    elif organizer or getattr(user, "is_eventorganizer", False):
+        role = "organizer"
+    elif customer or getattr(user, "is_customer", False):
+        role = "customer"
+    else:
+        role = "user"
+
+    data = {
+        "role": role,
+        "email": user.email,
+        "username": user.username,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "phone": getattr(user, "phone", None)
+    }
+
+    if customer:
+        data["customer"] = CustomerSerializer(customer).data
+    if organizer:
+        data["organizer"] = {"id": organizer.id}
+    if admin_obj:
+        data["admin"] = {"id": admin_obj.id}
+
     return Response({
         "status_code": 6000,
-        "data": {
-            "first_name": user.first_name,
-            "last_name": user.last_name,
-            "username": user.username,
-            "email": user.email,
-            "phone": user.phone
-        },
+        "data": data,
         "message": "Profile updated successfully"
     })
-
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -334,12 +358,14 @@ def cancel_booking(request, booking_id):
 
 
 
-
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def my_bookings(request):
-    bookings = Booking.objects.filter(customer__user=request.user).select_related("event")
-    today = date.today()  
+    bookings = Booking.objects.filter(
+        customer__user=request.user
+    ).select_related("event", "payment")  
+
+    today = date.today()
 
     latest_bookings = []
     past_bookings = []
@@ -347,13 +373,16 @@ def my_bookings(request):
     for booking in bookings:
         event = booking.event
         serialized = BookingSerializer(booking, context={"request": request}).data
-        
-    
-        serialized["can_review"] = event.start_date < today
 
+    
+        serialized["can_review"] = event.end_date < today
+
+     
         if event.start_date >= today:
             latest_bookings.append(serialized)
-        else:
+
+       
+        elif event.end_date < today and hasattr(booking, "payment") and booking.payment.status == "SUCCESS":
             past_bookings.append(serialized)
 
     return Response({
@@ -691,17 +720,26 @@ def rate_event(request, event_id):
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
-def get_event_ratings(request, event_id):
-    try:
-        event = Event.objects.get(id=event_id)
-    except Event.DoesNotExist:
-        return Response({"message": "Event not found"}, status=status.HTTP_404_NOT_FOUND)
-
-    ratings = EventRating.objects.filter(event=event).select_related("user")
+def get_all_ratings(request):
+    ratings = EventRating.objects.select_related("event", "user")
     serializer = EventRatingSerializer(ratings, many=True)
 
     return Response({
         "status_code": 6000,
-        "message": "Ratings retrieved successfully",
+        "message": "All ratings retrieved successfully",
         "data": serializer.data,
     })
+
+
+
+
+
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def recommended_events(request):
+    user = request.user
+    events = get_event_recommendations(user)
+    serializer = EventSerializer(events, many=True, context={"request": request})
+    return Response(serializer.data)

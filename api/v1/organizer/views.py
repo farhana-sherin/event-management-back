@@ -91,7 +91,7 @@ def create_event(request):
         with transaction.atomic():
             event = serializer.save(organizer=organizer)
 
-            frontend_base_url = "http://localhost:5173/event/detail"
+            frontend_base_url = "http://localhost:5173/auth/event/detail"
             qr_code_text = f"{frontend_base_url}/{event.id}"
             event.qr_code_text = qr_code_text
 
@@ -350,6 +350,10 @@ def organizer_dashboard(request):
         payment__status="REFUNDED"
     ).count()
 
+    total_customers = Booking.objects.filter(
+        event__organizer=organizer
+    ).values("customer").distinct().count()
+
     return Response({
         "status_code": 6000,
         "data": {
@@ -358,9 +362,11 @@ def organizer_dashboard(request):
             "total_bookings": total_bookings,
             "total_revenue": total_revenue,
             "cancelled_bookings": cancelled_bookings,
+            "total_customers": total_customers,
         },
         "message": "Organizer dashboard summary"
     })
+
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])

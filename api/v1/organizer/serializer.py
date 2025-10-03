@@ -18,6 +18,7 @@ class OrganizerSerializer(ModelSerializer):
 class EventSerializer(serializers.ModelSerializer):
     is_wishlisted = serializers.SerializerMethodField()
     organizer_email = serializers.EmailField(source="organizer.user.email", read_only=True)
+    price = serializers.DecimalField(max_digits=10, decimal_places=2)
 
     class Meta:
         model = Event
