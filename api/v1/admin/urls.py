@@ -1,7 +1,7 @@
 from django.urls import path
 
 from api.v1.admin import views
-app_name = 'admin'
+app_name = 'admin_api'
 
 
 

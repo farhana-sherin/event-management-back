@@ -11,7 +11,7 @@ urlpatterns = [
     path("api/v1/customer/", include(("api.v1.customer.urls", "customer"), namespace="customer")),
     path("api/v1/organizer/", include(("api.v1.organizer.urls", "organizer"), namespace="organizer")),
     path("api/v1/payment/", include(("api.v1.payment.urls", "payment"), namespace="payment")),
-    path("api/v1/admin/", include(("api.v1.admin.urls", "admin_api"), namespace="admin_api")),
+    path("api/v1/admin-api/", include(("api.v1.admin.urls", "admin_api"), namespace="admin_api")),
     path("api/v1/core/", include(("api.v1.core.urls", "core"), namespace="core")),
 ]
 
