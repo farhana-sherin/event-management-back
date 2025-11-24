@@ -123,7 +123,7 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=365),
 }
 
-CORS_ALLOW_ALL_ORIGINS = True  # Turn this OFF for production
+CORS_ALLOW_ALL_ORIGINS = False  # Turn this OFF for production
 CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOWED_ORIGINS = [
