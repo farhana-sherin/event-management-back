@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     'customer',
     'organizer',
     'payments',
+    
 ]
 
 # Middleware (CorsMiddleware MUST be on top)
