@@ -4,7 +4,6 @@ import os
 from dotenv import load_dotenv
 import dj_database_url
 
-
 load_dotenv()
 
 # Stripe keys
@@ -16,14 +15,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY
 SECRET_KEY = os.getenv("SECRET_KEY")
-
-DEBUG = TrueDEBUG = os.getenv("DEBUG", "False") == "True"
-
-ALLOWED_HOSTS = [
-    "event-management-back-1jat.onrender.com",
-    "localhost",
-]
-
+DEBUG = os.getenv("DEBUG", "False") == "True"
+ALLOWED_HOSTS = ["*"]
 
 # Application definition
 INSTALLED_APPS = [
@@ -76,6 +69,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'EventManagment.wsgi.application'
 
+# Database
 if DEBUG:
     DATABASES = {
         'default': {
@@ -95,6 +89,7 @@ else:
             ssl_require=True
         )
     }
+
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
