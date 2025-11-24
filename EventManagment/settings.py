@@ -123,7 +123,14 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=365),
 }
 
-# CORS settings
-CORS_ALLOW_ALL_ORIGINS = True  # allow all origins in development
+CORS_ALLOW_ALL_ORIGINS = False  # Turn this OFF for production
 CORS_ALLOW_CREDENTIALS = True
-# CORS_ALLOWED_ORIGINS = ["http://localhost:5173"]  # optional for production
+
+CORS_ALLOWED_ORIGINS = [
+    "https://event-motivoc-frontend.vercel.app",
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://event-motivoc-frontend.vercel.app",
+    "https://event-management-back-1jat.onrender.com",
+]
