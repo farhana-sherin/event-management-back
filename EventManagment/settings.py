@@ -76,14 +76,25 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'EventManagment.wsgi.application'
 
-# Database
-DATABASES = {
-    'default': dj_database_url.config(
-        default=os.getenv("DATABASE_URL"),
-        conn_max_age=600,
-        ssl_require=True
-    )
-}
+if DEBUG:
+    DATABASES = {
+        'default': {
+            "ENGINE": "django.db.backends.postgresql_psycopg2",
+            "NAME": "EventManagement",
+            "USER": "farhana",
+            "PASSWORD": "1234",
+            "HOST": "localhost",
+            "PORT": "5432",
+        }
+    }
+else:
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=os.getenv("DATABASE_URL"),
+            conn_max_age=600,
+            ssl_require=True
+        )
+    }
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
