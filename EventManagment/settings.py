@@ -2,6 +2,8 @@ from pathlib import Path
 from datetime import timedelta
 import os
 from dotenv import load_dotenv
+import dj_database_url
+
 
 load_dotenv()
 
@@ -13,9 +15,15 @@ STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY")
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY
-SECRET_KEY = 'django-insecure-oc^_3ph3^d-qy=jf7+5%(lcod!socv*uo(*yk)z)enn1_26ddt'
-DEBUG = True
-ALLOWED_HOSTS = ["*"]
+SECRET_KEY = os.getenv("SECRET_KEY")
+
+DEBUG = TrueDEBUG = os.getenv("DEBUG", "False") == "True"
+
+ALLOWED_HOSTS = [
+    "event-management-back-1jat.onrender.com",
+    "localhost",
+]
+
 
 # Application definition
 INSTALLED_APPS = [
@@ -70,14 +78,11 @@ WSGI_APPLICATION = 'EventManagment.wsgi.application'
 
 # Database
 DATABASES = {
-    'default': {
-        "ENGINE": "django.db.backends.postgresql_psycopg2",
-        "NAME": "EventManagement",
-        "USER": "farhana",
-        "PASSWORD": "1234",
-        "HOST": "localhost",
-        "PORT": "5432",
-    }
+    'default': dj_database_url.config(
+        default=os.getenv("DATABASE_URL"),
+        conn_max_age=600,
+        ssl_require=True
+    )
 }
 
 # Password validation
