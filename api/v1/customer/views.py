@@ -272,14 +272,43 @@ def events_list(request):
         "message": "Upcoming events list"
     })
 
+from django.shortcuts import get_object_or_404
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def event_detail_customer(request, id):
-    event = Event.objects.get(id=id)
-    serializer = EventSerializer(event, context={"request": request})
+    event = get_object_or_404(Event, id=id)
+
+    data = {
+        "id": event.id,
+        "title": event.title,
+        "description": event.description,
+        "category": event.category,
+        "location": event.location,
+        "price": event.price,
+        "ticket_count": event.ticket_count,
+        "start_date": str(event.start_date),
+        "start_time": str(event.start_time),
+        "end_date": str(event.end_date),
+        "end_time": str(event.end_time),
+
+        # SAFE image handling
+        "images": event.images.url if event.images and hasattr(event.images, "url") else None,
+
+        # SAFE QR image
+        "qr_code_image": (
+            event.qr_code_image.url 
+            if event.qr_code_image and hasattr(event.qr_code_image, "url") 
+            else None
+        ),
+
+        # QR text
+        "qr_code_text": event.qr_code_text,
+    }
+
     return Response({
         "status_code": 6000,
-        "data": serializer.data,
+        "data": data,
         "message": "Event detail"
     })
 
