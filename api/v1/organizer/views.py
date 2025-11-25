@@ -91,7 +91,7 @@ def create_event(request):
         with transaction.atomic():
             event = serializer.save(organizer=organizer)
 
-            frontend_base_url = "http://localhost:5173/auth/event/detail"
+            frontend_base_url = "https://event-motivoc-frontend.vercel.app/auth/event/detail"
             qr_code_text = f"{frontend_base_url}/{event.id}"
             event.qr_code_text = qr_code_text
 
