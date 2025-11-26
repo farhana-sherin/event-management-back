@@ -111,6 +111,8 @@ def create_checkout_session(request, booking_id):
     )
 
     try:
+        frontend_base_url = getattr(settings, "FRONTEND_BASE_URL", "http://localhost:5173")
+
         session = stripe.checkout.Session.create(
             payment_method_types=["card"],
             line_items=[{
@@ -125,8 +127,8 @@ def create_checkout_session(request, booking_id):
                 "quantity": tickets_count,
             }],
             mode="payment",
-            success_url=f"http://localhost:5173/payment/success?booking_id={booking.id}&session_id={{CHECKOUT_SESSION_ID}}",
-            cancel_url="http://localhost:5173/payment/cancel"
+            success_url=f"{frontend_base_url}/payment/success?booking_id={booking.id}&session_id={{CHECKOUT_SESSION_ID}}",
+            cancel_url=f"{frontend_base_url}/payment/cancel"
         )
 
         payment.payment_id = session.id
@@ -184,20 +186,44 @@ def stripe_webhook(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def verify_payment(request, booking_id, session_id):
+    session = None
+    stripe_error = None
+
+    # Attempt to verify with Stripe when keys are configured
+    if settings.STRIPE_SECRET_KEY:
+        try:
+            session = stripe.checkout.Session.retrieve(session_id)
+        except Exception as e:
+            stripe_error = str(e)
+    else:
+        stripe_error = "Stripe secret key not configured"
+
     try:
-        session = stripe.checkout.Session.retrieve(session_id)
-        payment = Payment.objects.get(payment_id=session.id)
+        payment = Payment.objects.filter(payment_id=session_id).first()
+
+        # Fallback: if payment stored with different id but we have session data
+        if not payment and session:
+            payment = Payment.objects.filter(payment_id=session.id).first()
+
+        if not payment:
+            return Response({"error": "Payment record not found"}, status=404)
+
         booking = payment.booking
 
-        if session.payment_status == "paid" and payment.status != "SUCCESS":
+        # If Stripe session confirms payment, update local record
+        if session and session.payment_status == "paid" and payment.status != "SUCCESS":
             payment.status = "SUCCESS"
             payment.save()
 
-            if not booking.qr_code_text:
-                booking.qr_code_text = f"BOOKING:{booking.id}|EVENT:{booking.event.title}|TICKETS:{booking.tickets_count}|EMAIL:{booking.customer.user.email}|PRICE:{booking.event.price}"
-                booking.save()
+        # Ensure booking has QR code text generated
+        if payment.status == "SUCCESS" and not booking.qr_code_text:
+            booking.qr_code_text = (
+                f"BOOKING:{booking.id}|EVENT:{booking.event.title}|"
+                f"TICKETS:{booking.tickets_count}|EMAIL:{booking.customer.user.email}|"
+                f"PRICE:{booking.event.price}"
+            )
+            booking.save()
 
-          
             create_notification(
                 customer=booking.customer,
                 title="Booking Successful",
@@ -205,7 +231,7 @@ def verify_payment(request, booking_id, session_id):
                 sender_role="ADMIN"
             )
 
-        return Response({
+        response_data = {
             "booking_id": booking.id,
             "payment_id": payment.payment_id,
             "amount": payment.amount,
@@ -218,7 +244,12 @@ def verify_payment(request, booking_id, session_id):
                 "price": booking.event.price
             },
             "qr_code_text": booking.qr_code_text
-        })
+        }
+
+        if stripe_error and payment.status != "SUCCESS":
+            response_data["stripe_error"] = stripe_error
+
+        return Response(response_data)
 
     except Payment.DoesNotExist:
         return Response({"error": "Payment record not found"}, status=404)

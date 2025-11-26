@@ -109,6 +109,7 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 # Base URL for building absolute URLs (used in serializers)
 BASE_URL = os.getenv("BASE_URL", "https://event-management-back-1jat.onrender.com")
+FRONTEND_BASE_URL = os.getenv("FRONTEND_BASE_URL", "https://event-motivoc-frontend.vercel.app")
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
