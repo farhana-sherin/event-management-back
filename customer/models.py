@@ -113,7 +113,7 @@ class EventRating(models.Model):
 class Banner(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
-    image = models.ImageField(upload_to="banners/")
+    image = models.ImageField(blank=True, null=True)
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="banners")
     created_at = models.DateTimeField(auto_now_add=True)
 

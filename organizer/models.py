@@ -48,10 +48,10 @@ class Event(models.Model):
     ticket_count = models.PositiveIntegerField()
 
     created_at = models.DateTimeField(auto_now_add=True)
-    images = models.FileField(upload_to="event_images/", blank=True, null=True)
+    images = models.FileField(blank=True, null=True)
     qr_code_text = models.CharField(max_length=255, unique=True, blank=True, null=True)
 
-    qr_code_image = models.ImageField(upload_to="event_qrcodes/", null=True, blank=True)
+    qr_code_image = models.ImageField(null=True, blank=True)
 
     is_active = models.BooleanField(default=False)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="PENDING")  # ✅ NEW
