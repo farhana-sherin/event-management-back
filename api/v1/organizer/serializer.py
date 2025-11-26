@@ -17,7 +17,7 @@ class OrganizerSerializer(ModelSerializer):
         fields = ['id', 'user']
 class EventSerializer(serializers.ModelSerializer):
     is_wishlisted = serializers.SerializerMethodField()
-    organizer_email = serializers.EmailField(source="organizer.user.email", read_only=True)
+    organizer_email = serializers.SerializerMethodField()
     price = serializers.DecimalField(max_digits=10, decimal_places=2)
 
     class Meta:
@@ -25,6 +25,11 @@ class EventSerializer(serializers.ModelSerializer):
         fields = "__all__"
         read_only_fields = ["organizer", "qr_code_text", "qr_code_image"]
 
+    def get_organizer_email(self, obj):
+        if obj.organizer and obj.organizer.user:
+            return obj.organizer.user.email
+        return None
+    
     def get_is_wishlisted(self, obj):
         request = self.context.get("request")
         if request and request.user.is_authenticated:

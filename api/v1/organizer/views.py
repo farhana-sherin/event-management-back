@@ -212,7 +212,13 @@ def my_events(request):
 @permission_classes([IsAuthenticated])
 def event_detail_organizer(request, id):
     user = request.user
-    organizer = Organizer.objects.get(user=user)
+    organizer = Organizer.objects.filter(user=user).first()
+    
+    if not organizer:
+        return Response({
+            "status_code": 6001,
+            "message": "Organizer profile not found"
+        }, status=status.HTTP_404_NOT_FOUND)
 
     try:
         event = Event.objects.get(id=id, organizer=organizer)
