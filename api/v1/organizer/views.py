@@ -78,6 +78,7 @@ def logout(request):
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser, FormParser])
 def create_event(request):
     organizer = Organizer.objects.filter(user=request.user).first()
     if not organizer:
@@ -111,6 +112,9 @@ def create_event(request):
             file_buffer = ContentFile(buffer.getvalue(), name=filename)
             event.qr_code_image.save(filename, file_buffer)
             event.save(update_fields=["qr_code_text", "qr_code_image"])
+            
+            # Refresh from database to get updated file paths
+            event.refresh_from_db()
 
         return Response({
             "status_code": 6000,
