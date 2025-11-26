@@ -401,8 +401,21 @@ def my_bookings(request):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def add_to_wishlist(request, id):
-    customer = Customer.objects.get(user=request.user)
-    event = Event.objects.get(id=id)
+    customer = Customer.objects.filter(user=request.user).first()
+    if not customer:
+        return Response({
+            "status_code": 6001,
+            "message": "Customer profile not found"
+        }, status=status.HTTP_404_NOT_FOUND)
+    
+    try:
+        event = Event.objects.get(id=id)
+    except Event.DoesNotExist:
+        return Response({
+            "status_code": 6001,
+            "message": "Event not found"
+        }, status=status.HTTP_404_NOT_FOUND)
+    
     wishlist, created = Wishlist.objects.get_or_create(customer=customer, event=event)
     serializer = WishlistSerializer(wishlist, context={"request": request})
     return Response({"status_code": 6000, "data": serializer.data, "message": "Added to wishlist"})
@@ -411,7 +424,13 @@ def add_to_wishlist(request, id):
 @api_view(["DELETE"])
 @permission_classes([IsAuthenticated])
 def remove_from_wishlist(request, id):
-    customer = Customer.objects.get(user=request.user)
+    customer = Customer.objects.filter(user=request.user).first()
+    if not customer:
+        return Response({
+            "status_code": 6001,
+            "message": "Customer profile not found"
+        }, status=status.HTTP_404_NOT_FOUND)
+    
     Wishlist.objects.filter(customer=customer, event__id=id).delete()
     return Response({"status_code": 6000, "message": "Removed from wishlist"})
 
@@ -419,7 +438,14 @@ def remove_from_wishlist(request, id):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def my_wishlist(request):
-    customer = Customer.objects.get(user=request.user)
+    customer = Customer.objects.filter(user=request.user).first()
+    if not customer:
+        return Response({
+            "status_code": 6001,
+            "data": [],
+            "message": "Customer profile not found"
+        }, status=status.HTTP_404_NOT_FOUND)
+    
     wishlist = Wishlist.objects.filter(customer=customer)
     serializer = WishlistSerializer(wishlist, many=True, context={"request": request})
     return Response({"status_code": 6000, "data": serializer.data, "message": "My wishlist"})
