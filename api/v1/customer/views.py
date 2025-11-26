@@ -108,60 +108,71 @@ def register(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def profile(request, id):
-    user = request.user
-
-   
-    customer = None
-    organizer = None
-    admin_obj = None
-
     try:
-        customer = Customer.objects.get(user=user)
-    except Customer.DoesNotExist:
-        pass
+        user = request.user
 
-    try:
-        organizer = Organizer.objects.get(user=user)
-    except Organizer.DoesNotExist:
-        pass
+        customer = None
+        organizer = None
+        admin_obj = None
 
-    try:
-        admin_obj = getattr(user, "admin_profile", None)  
-    except:
-        pass
+        try:
+            customer = Customer.objects.filter(user=user).first()
+        except Exception:
+            pass
 
-    # Determine role
-    if admin_obj or getattr(user, "is_admin", False):
-        role = "admin"
-    elif organizer or getattr(user, "is_eventorganizer", False):
-        role = "organizer"
-    elif customer or getattr(user, "is_customer", False):
-        role = "customer"
-    else:
-        role = "user"
+        try:
+            organizer = Organizer.objects.filter(user=user).first()
+        except Exception:
+            pass
 
-    
-    data = {
-        "role": role,
-        "email": user.email,
-        "username": user.username,
-        "first_name": user.first_name,
-        "last_name": user.last_name,
-        "phone": getattr(user, "phone", None)
-    }
+        try:
+            admin_obj = getattr(user, "admin_profile", None)  
+        except Exception:
+            pass
 
-    if customer:
-        data["customer"] = CustomerSerializer(customer).data
-    if organizer:
-        data["organizer"] = {"id": organizer.id}  
-    if admin_obj:
-        data["admin"] = {"id": admin_obj.id}  
+        # Determine role
+        if admin_obj or getattr(user, "is_admin", False):
+            role = "admin"
+        elif organizer or getattr(user, "is_eventorganizer", False):
+            role = "organizer"
+        elif customer or getattr(user, "is_customer", False):
+            role = "customer"
+        else:
+            role = "user"
 
-    return Response({
-        "status_code": 6000,
-        "data": data,
-        "message": "Profile retrieved successfully"
-    })
+        
+        data = {
+            "role": role,
+            "email": user.email if user.email else "",
+            "username": user.username if user.username else "",
+            "first_name": user.first_name if user.first_name else "",
+            "last_name": user.last_name if user.last_name else "",
+            "phone": getattr(user, "phone", None)
+        }
+
+        if customer:
+            try:
+                data["customer"] = CustomerSerializer(customer).data
+            except Exception as e:
+                data["customer"] = {"id": customer.id}
+        
+        if organizer:
+            data["organizer"] = {"id": organizer.id}  
+        
+        if admin_obj:
+            data["admin"] = {"id": admin_obj.id}  
+
+        return Response({
+            "status_code": 6000,
+            "data": data,
+            "message": "Profile retrieved successfully"
+        })
+    except Exception as e:
+        return Response({
+            "status_code": 6001,
+            "data": {},
+            "message": f"Error retrieving profile: {str(e)}"
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 @api_view(['PUT'])
 @permission_classes([IsAuthenticated])
 def update_profile(request, id):

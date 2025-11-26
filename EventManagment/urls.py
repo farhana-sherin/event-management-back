@@ -18,12 +18,11 @@ urlpatterns = [
 ]
 
 # Serve media files in both development and production
+# IMPORTANT: Media URL must be added BEFORE other URL patterns to ensure it's matched first
+urlpatterns = [
+    re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
+] + urlpatterns
+
 if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
-else:
-    # Serve media files in production
-    urlpatterns += [
-        re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
-    ]
 

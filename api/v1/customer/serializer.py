@@ -7,9 +7,12 @@ from api.v1.organizer.serializer import *
 
 
 class CustomerSerializer(serializers.ModelSerializer):
+    user_id = serializers.IntegerField(source='user.id', read_only=True)
+    user_email = serializers.EmailField(source='user.email', read_only=True)
+    
     class Meta:
         model = Customer
-        fields = ['id', 'user']
+        fields = ['id', 'user_id', 'user_email']
 
 
 
