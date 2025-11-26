@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.conf import settings
 from users.models import User
 from customer.models import *
 from organizer.models import *
@@ -58,9 +59,19 @@ class SendNotificationSerializer(serializers.Serializer):
 
 
 class BannerSerializer(serializers.ModelSerializer):
-    image = serializers.ImageField()
+    image = serializers.SerializerMethodField()
 
     class Meta:
         model = Banner
-        fields = ['id', 'title', 'description', 'image', 'event'] 
+        fields = ['id', 'title', 'description', 'image', 'event']
+    
+    def get_image(self, obj):
+        if obj.image:
+            request = self.context.get("request")
+            if request:
+                return request.build_absolute_uri(obj.image.url)
+            # Fallback: construct URL manually if request is not available
+            base_url = getattr(settings, 'BASE_URL', 'https://event-management-back-1jat.onrender.com')
+            return f"{base_url}{obj.image.url}"
+        return None 
 

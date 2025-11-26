@@ -507,7 +507,7 @@ def pending_events_admin(request):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def create_banner(request):
-    serializer = BannerSerializer(data=request.data)
+    serializer = BannerSerializer(data=request.data, context={"request": request})
     if serializer.is_valid():
         serializer.save()
         return Response({
