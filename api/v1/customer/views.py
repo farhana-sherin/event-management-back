@@ -645,6 +645,15 @@ def banner_list(request):
     })
 
 
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def fix_events(request):
+    from organizer.models import Event
+    Event.objects.update(images=None)
+    return Response({"message": "Event images cleared"})
+
+
+
 
 
 @api_view(["GET"])

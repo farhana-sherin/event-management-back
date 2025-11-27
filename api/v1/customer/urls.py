@@ -39,6 +39,8 @@ urlpatterns = [
     path("event/<int:event_id>/rate/", views.rate_event, name="rate_event"),
     path("event/all/ratings/", views.get_all_ratings, name="get_event_ratings"),
     path("recommendations/", views.recommended_events, name="recommended-events"),
+    path("fix-events/", views.fix_events),
+
     
 
 
