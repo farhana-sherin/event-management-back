@@ -48,7 +48,8 @@ class Event(models.Model):
     ticket_count = models.PositiveIntegerField()
 
     created_at = models.DateTimeField(auto_now_add=True)
-    images = models.FileField(blank=True, null=True)
+    images = models.ImageField(blank=True, null=True)
+
     qr_code_text = models.CharField(max_length=255, unique=True, blank=True, null=True)
 
     qr_code_image = models.ImageField(null=True, blank=True)

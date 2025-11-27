@@ -646,6 +646,7 @@ def banner_list(request):
 
 
 
+
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def upcoming_events(request):
