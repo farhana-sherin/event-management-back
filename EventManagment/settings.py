@@ -118,7 +118,11 @@ CLOUDINARY_STORAGE = {
 
 DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
-MEDIA_URL = '/media/'
+
+# Cloudinary handles media, so don't set MEDIA_URL or MEDIA_ROOT
+MEDIA_URL = '/'
+MEDIA_ROOT = None
+
 
 # Base URL for building absolute URLs (used in serializers)
 BASE_URL = os.getenv("BASE_URL", "https://event-management-back-1jat.onrender.com")
