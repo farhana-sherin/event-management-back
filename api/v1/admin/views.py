@@ -31,6 +31,32 @@ from api.v1.admin.serializer import*
 from customer.utils import *
 from django.utils import timezone
 
+# Admin Login
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def admin_login(request):
+    email = request.data.get("email")
+    password = request.data.get("password")
+    user = authenticate(email=email, password=password)
+
+    if user and user.is_admin:
+        refresh = RefreshToken.for_user(user)
+
+        return Response({
+            "status_code": 6000,
+            "data": {
+                "access": str(refresh.access_token),
+                "role": "admin",
+                "email": user.email,
+            },
+            "message": "Admin login successful"
+        })
+    
+    return Response({
+        "status_code": 6001,
+        "message": "Invalid credentials or not an admin"
+    }, status=status.HTTP_401_UNAUTHORIZED)
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def admin_dashboard_summary(request):

@@ -6,7 +6,7 @@ app_name = 'admin_api'
 
 
 urlpatterns = [
-
+    path('admin/login/', views.admin_login, name='admin_login'),
     path('admin/dashboard-summary/', views.admin_dashboard_summary,name='admin_dashboard_summary'),
     path('users/', views.user_list, name='user-list'),          # GET all users
     path('users/<int:pk>/', views.user_delete, name='user-delete'), # DELETE
