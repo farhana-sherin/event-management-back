@@ -30,6 +30,12 @@ urlpatterns = [
     path("admin/events/cancelled/", views.cancelled_events_admin),
     path('admin/banner/create/', views.create_banner, name="create_banner"),
     
+    # New endpoints for refunds and all events
+    path('admin/events/all/', views.get_all_events, name="get_all_events"),
+    path('admin/pending-refunds/', views.get_pending_refunds, name="get_pending_refunds"),
+    path('admin/approve-refund/<int:booking_id>/', views.approve_refund, name="approve_refund"),
+    path('admin/reject-refund/<int:booking_id>/', views.reject_refund, name="reject_refund"),
+    
 
 
 

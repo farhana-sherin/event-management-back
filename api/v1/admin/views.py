@@ -57,6 +57,162 @@ def admin_login(request):
         "message": "Invalid credentials or not an admin"
     }, status=status.HTTP_401_UNAUTHORIZED)
 
+
+# Get All Events (for banner creation dropdown)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_all_events(request):
+    if not request.user.is_admin:
+        return Response({"status_code": 6003, "message": "Permission denied"}, status=403)
+    
+    events = Event.objects.all().order_by('-created_at')
+    serializer = EventSerializer(events, many=True, context={"request": request})
+    return Response({
+        "status_code": 6000,
+        "data": serializer.data,
+        "message": "All events retrieved successfully"
+    })
+
+
+# Get Pending Refunds
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_pending_refunds(request):
+    if not request.user.is_admin:
+        return Response({"status_code": 6003, "message": "Permission denied"}, status=403)
+    
+    # Get bookings with refund requests (status = REFUND_REQUESTED or similar)
+    # Assuming you have a refund_requested field or status
+    pending_refunds = Booking.objects.filter(
+        status="REFUND_REQUESTED"
+    ).select_related('customer__user', 'event', 'payment')
+    
+    refund_data = []
+    for booking in pending_refunds:
+        refund_data.append({
+            "id": booking.id,
+            "customer_name": f"{booking.customer.user.first_name} {booking.customer.user.last_name}".strip() or booking.customer.user.email,
+            "customer_email": booking.customer.user.email,
+            "event_name": booking.event.title,
+            "amount": float(booking.payment.amount) if hasattr(booking, 'payment') and booking.payment else 0,
+            "requested_at": booking.updated_at,
+        })
+    
+    return Response({
+        "status_code": 6000,
+        "data": refund_data,
+        "message": "Pending refunds retrieved successfully"
+    })
+
+
+# Approve Refund
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def approve_refund(request, booking_id):
+    if not request.user.is_admin:
+        return Response({"status_code": 6003, "message": "Permission denied"}, status=403)
+    
+    try:
+        booking = Booking.objects.get(id=booking_id)
+        payment = getattr(booking, "payment", None)
+        
+        if not payment:
+            return Response({
+                "status_code": 6001,
+                "message": "No payment found for this booking"
+            }, status=400)
+        
+        # Calculate refund amount (same logic as cancel_booking)
+        refund_amount = max(float(payment.amount) - 20, 0)
+        
+        # Process refund via Stripe if payment_intent_id exists
+        if payment.payment_intent_id:
+            try:
+                stripe.Refund.create(
+                    payment_intent=payment.payment_intent_id,
+                    amount=int(refund_amount * 100)
+                )
+            except stripe.error.StripeError as e:
+                return Response({
+                    "status_code": 6001,
+                    "message": f"Stripe refund failed: {str(e)}"
+                }, status=400)
+        
+        # Update payment and booking status
+        payment.status = "REFUNDED"
+        payment.amount_refunded = refund_amount
+        payment.save()
+        
+        booking.status = "CANCELLED"
+        booking.save()
+        
+        # Notify customer
+        create_notification(
+            customer=booking.customer,
+            title="Refund Approved",
+            message=f"Your refund of ₹{refund_amount} for '{booking.event.title}' has been approved.",
+            organizer=None,
+            sender_role="ADMIN"
+        )
+        
+        return Response({
+            "status_code": 6000,
+            "message": "Refund approved successfully",
+            "refund_amount": refund_amount
+        })
+        
+    except Booking.DoesNotExist:
+        return Response({
+            "status_code": 6001,
+            "message": "Booking not found"
+        }, status=404)
+    except Exception as e:
+        return Response({
+            "status_code": 6001,
+            "message": f"Error processing refund: {str(e)}"
+        }, status=400)
+
+
+# Reject Refund
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def reject_refund(request, booking_id):
+    if not request.user.is_admin:
+        return Response({"status_code": 6003, "message": "Permission denied"}, status=403)
+    
+    try:
+        booking = Booking.objects.get(id=booking_id)
+        
+        # Change status back to confirmed or original status
+        booking.status = "CONFIRMED"
+        booking.save()
+        
+        # Notify customer
+        create_notification(
+            customer=booking.customer,
+            title="Refund Request Rejected",
+            message=f"Your refund request for '{booking.event.title}' has been rejected by admin.",
+            organizer=None,
+            sender_role="ADMIN"
+        )
+        
+        return Response({
+            "status_code": 6000,
+            "message": "Refund request rejected successfully"
+        })
+        
+    except Booking.DoesNotExist:
+        return Response({
+            "status_code": 6001,
+            "message": "Booking not found"
+        }, status=404)
+    except Exception as e:
+        return Response({
+            "status_code": 6001,
+            "message": f"Error rejecting refund: {str(e)}"
+        }, status=400)
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def admin_dashboard_summary(request):
