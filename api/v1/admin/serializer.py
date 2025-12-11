@@ -60,10 +60,12 @@ class SendNotificationSerializer(serializers.Serializer):
 
 class BannerSerializer(serializers.ModelSerializer):
     image = serializers.SerializerMethodField()
+    start_date = serializers.DateField(source='event.start_date', read_only=True)
+    end_date = serializers.DateField(source='event.end_date', read_only=True)
 
     class Meta:
         model = Banner
-        fields = ['id', 'title', 'description', 'image', 'event']
+        fields = ['id', 'title', 'description', 'image', 'event', 'start_date', 'end_date']
     
     def get_image(self, obj):
         if obj.image:

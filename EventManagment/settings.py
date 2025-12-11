@@ -6,15 +6,15 @@ import dj_database_url
 
 load_dotenv()
 
+BASE_DIR = Path(__file__).resolve().parent.parent
+SECRET_KEY = os.getenv("SECRET_KEY")
+DEBUG = os.getenv("DEBUG", "False") == "True"
+
+ALLOWED_HOSTS = ["*"]
+
 # Stripe keys
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY")
-
-BASE_DIR = Path(__file__).resolve().parent.parent
-
-SECRET_KEY = os.getenv("SECRET_KEY")
-DEBUG = os.getenv("DEBUG", "False") == "True"
-ALLOWED_HOSTS = ["*"]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -33,14 +33,12 @@ INSTALLED_APPS = [
     'organizer',
     'payments',
 
-
-
     'cloudinary_storage',
     'cloudinary',
 ]
 
 MIDDLEWARE = [
-    "corsheaders.middleware.CorsMiddleware",
+    "corsheaders.middleware.CorsMiddleware",       # MUST BE FIRST
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -50,7 +48,6 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
-
 
 ROOT_URLCONF = 'EventManagment.urls'
 
@@ -72,7 +69,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'EventManagment.wsgi.application'
 
-# DATABASE
+# DATABASES
 if DEBUG:
     DATABASES = {
         'default': {
@@ -107,6 +104,7 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / "staticfiles"
+
 CLOUDINARY_STORAGE = {
     'CLOUD_NAME': os.getenv('CLOUDINARY_CLOUD_NAME'),
     'API_KEY': os.getenv('CLOUDINARY_API_KEY'),
@@ -122,18 +120,13 @@ STORAGES = {
     },
 }
 
-
-# Cloudinary handles media, so don't set MEDIA_URL or MEDIA_ROOT
 MEDIA_URL = '/'
 MEDIA_ROOT = None
 
-
-# Base URL for building absolute URLs (used in serializers)
 BASE_URL = os.getenv("BASE_URL", "https://event-management-back-1jat.onrender.com")
 FRONTEND_BASE_URL = os.getenv("FRONTEND_BASE_URL", "https://event-motivoc-frontend.vercel.app")
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
 AUTH_USER_MODEL = 'users.User'
 
 REST_FRAMEWORK = {
@@ -146,82 +139,63 @@ SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(days=60),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=365),
 }
+
+# ---------------------------------------
+# CORS SETTINGS — FINAL WORKING VERSION
+# ---------------------------------------
+
 CORS_ALLOW_CREDENTIALS = True
 
+# Only these origins are allowed (LOCAL + PRODUCTION FRONTEND)
 CORS_ALLOWED_ORIGINS = [
     "https://event-motivoc-frontend.vercel.app",
     "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:5175",
 ]
 
-CORS_ORIGIN_WHITELIST = [
-    "https://event-motivoc-frontend.vercel.app",
-    "http://localhost:5173",
-]
+# Allow all headers
+CORS_ALLOW_HEADERS = ["*"]
 
-CORS_ALLOW_ALL_ORIGINS = False
+# Allow all methods
+CORS_ALLOW_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
 
-CORS_ALLOW_HEADERS = [
-    "accept",
-    "accept-encoding",
-    "authorization",
-    "content-type",
-    "origin",
-    "x-csrftoken",
-    "x-requested-with",
-]
-
-CORS_ALLOW_METHODS = [
-    "DELETE",
-    "GET",
-    "OPTIONS",
-    "PATCH",
-    "POST",
-    "PUT",
-]
-
+# CSRF Trusted origins
 CSRF_TRUSTED_ORIGINS = [
     "https://event-management-back-1jat.onrender.com",
     "https://event-motivoc-frontend.vercel.app",
     "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:5175",
 ]
 
-CORS_EXPOSE_HEADERS = ["Content-Type", "X-CSRFToken"]
+# REMOVE THIS → It breaks CORS (you had it before)
+# CORS_ORIGIN_WHITELIST = [...]
 
+# REMOVE THIS → You don't want to allow ALL origins
+# CORS_ALLOW_ALL_ORIGINS = False
+# ---------------------------------------
+# END CORS CONFIG
+# ---------------------------------------
 
-
-
-# -----------------------------
+# ---------------------------------------
 # AUTO CREATE SUPERUSER ON RENDER
-# AUTO CREATE SUPERUSER ON RENDER
-import os
-from django.apps import apps
+# ---------------------------------------
+
 from django.contrib.auth import get_user_model
 
 def create_superuser():
     User = get_user_model()
-
     email = "admin123@gmail.com"
     username = "admin123"
     password = "1234"
 
     if not User.objects.filter(email=email).exists():
-        User.objects.create_superuser(
-            email=email,
-            username=username,
-            password=password
-        )
+        User.objects.create_superuser(email=email, username=username, password=password)
         print("Superuser created!")
     else:
         print("Superuser already exists!")
 
-# Only run when apps are fully loaded
 if os.environ.get("CREATE_SUPERUSER") == "1":
-    def _run_create_superuser(sender, **kwargs):
-        create_superuser()
-
-    from django.apps import AppConfig, apps
-    from django.core.signals import request_finished
     from django.db.models.signals import post_migrate
-
-    post_migrate.connect(_run_create_superuser)
-
+    post_migrate.connect(lambda *args, **kwargs: create_superuser())
