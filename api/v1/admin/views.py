@@ -82,10 +82,10 @@ def get_pending_refunds(request):
         return Response({"status_code": 6003, "message": "Permission denied"}, status=403)
     
     try:
-        # Get bookings where payment status is REFUND_PENDING (new flow) or REFUNDED (old flow)
-        # This handles both old cancelled bookings and new refund requests
+        # Get bookings where payment status is REFUND_PENDING only
+        # Once refunded, bookings should not appear in pending list
         pending_refunds = Booking.objects.filter(
-            payment__status__in=["REFUND_PENDING", "REFUNDED"]
+            payment__status="REFUND_PENDING"
         ).select_related('customer__user', 'event', 'payment').order_by('-booking_date')
         
         refund_data = []
@@ -208,15 +208,26 @@ def reject_refund(request, booking_id):
     
     try:
         booking = Booking.objects.get(id=booking_id)
+        payment = getattr(booking, "payment", None)
         
-        # Note: Booking model doesn't have a status field
-        # Nothing to update on booking for rejection
+        # Update payment status back to SUCCESS if it was REFUND_PENDING
+        if payment and payment.status == "REFUND_PENDING":
+            payment.status = "SUCCESS"
+            payment.save()
+        
+        # Update booking status back to CONFIRMED
+        try:
+            booking.status = "CONFIRMED"
+            booking.save()
+        except Exception:
+            # Booking model might not have status field yet (before migration)
+            pass
         
         # Notify customer
         create_notification(
             customer=booking.customer,
             title="Refund Request Rejected",
-            message=f"Your refund request for '{booking.event.title}' has been rejected by admin.",
+            message=f"Your refund request for '{booking.event.title}' has been rejected by admin. Your booking is now confirmed.",
             organizer=None,
             sender_role="ADMIN"
         )
