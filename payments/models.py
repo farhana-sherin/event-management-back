@@ -34,6 +34,7 @@ class Payment(models.Model):
         ("SUCCESS", "Success"),
         ("FAILED", "Failed"),
         ("PENDING", "Pending"),
+        ("REFUNDED", "Refunded"),
     ]
 
     booking = models.OneToOneField(Booking, on_delete=models.CASCADE, related_name="payment")

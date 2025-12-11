@@ -81,15 +81,31 @@ def get_pending_refunds(request):
     if not request.user.is_admin:
         return Response({"status_code": 6003, "message": "Permission denied"}, status=403)
     
-    # NOTE: The Booking model doesn't have a status field to track refund requests
-    # Returning empty list for now. To implement this feature, you would need to:
-    # 1. Add a 'status' field to the Booking model with choices like CONFIRMED, REFUND_REQUESTED, CANCELLED
-    # 2. Or add a separate RefundRequest model
+    # Get bookings where payment status is REFUNDED (customer already cancelled)
+    # These are treated as pending admin approval for refund processing
+    pending_refunds = Booking.objects.filter(
+        payment__status="REFUNDED"
+    ).select_related('customer__user', 'event', 'payment').order_by('-booking_date')
+    
+    refund_data = []
+    for booking in pending_refunds:
+        payment = booking.payment
+        # Calculate refund amount (amount - 20 cancellation fee)
+        refund_amount = max(float(payment.amount) - 20, 0) if payment else 0
+        
+        refund_data.append({
+            "id": booking.id,
+            "customer_name": f"{booking.customer.user.first_name} {booking.customer.user.last_name}".strip() or booking.customer.user.email,
+            "customer_email": booking.customer.user.email,
+            "event_name": booking.event.title,
+            "amount": refund_amount,
+            "requested_at": booking.booking_date,
+        })
     
     return Response({
         "status_code": 6000,
-        "data": [],
-        "message": "No pending refunds (refund tracking not implemented in current schema)"
+        "data": refund_data,
+        "message": "Pending refunds retrieved successfully"
     })
 
 
