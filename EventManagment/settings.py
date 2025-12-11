@@ -154,8 +154,18 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5175",
 ]
 
-# Allow all headers
-CORS_ALLOW_HEADERS = ["*"]
+# Allow all headers (explicitly list them for CORS to work properly)
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+]
 
 # Allow all methods
 CORS_ALLOW_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
