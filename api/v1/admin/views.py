@@ -584,16 +584,25 @@ def admin_organizer_income(request):
     data = []
 
     for org in organizers:
-       
+        # Get total income
         total_income = Payment.objects.filter(
             booking__event__organizer=org,
             status="SUCCESS"
         ).aggregate(total=Sum("amount"))["total"] or 0
+        
+        # Get total events
+        total_events = Event.objects.filter(organizer=org).count()
+        
+        # Get total bookings for this organizer's events
+        total_bookings = Booking.objects.filter(event__organizer=org).count()
 
         data.append({
             "organizer_id": org.id,
-            "organizer_name": getattr(org.user, "full_name", org.user.email),
-            "total_income": total_income
+            "organizer_name": f"{org.user.first_name} {org.user.last_name}".strip() or org.user.email,
+            "organizer_email": org.user.email,
+            "total_income": total_income,
+            "total_events": total_events,
+            "total_bookings": total_bookings
         })
 
     return Response({
