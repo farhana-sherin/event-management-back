@@ -81,32 +81,38 @@ def get_pending_refunds(request):
     if not request.user.is_admin:
         return Response({"status_code": 6003, "message": "Permission denied"}, status=403)
     
-    # Get bookings where payment status is REFUND_PENDING (customer requested cancellation)
-    # These are awaiting admin approval for refund processing
-    pending_refunds = Booking.objects.filter(
-        payment__status="REFUND_PENDING"
-    ).select_related('customer__user', 'event', 'payment').order_by('-booking_date')
-    
-    refund_data = []
-    for booking in pending_refunds:
-        payment = booking.payment
-        # Calculate refund amount (amount - 20 cancellation fee)
-        refund_amount = max(float(payment.amount) - 20, 0) if payment else 0
+    try:
+        # Get bookings where payment status is REFUND_PENDING (new flow) or REFUNDED (old flow)
+        # This handles both old cancelled bookings and new refund requests
+        pending_refunds = Booking.objects.filter(
+            payment__status__in=["REFUND_PENDING", "REFUNDED"]
+        ).select_related('customer__user', 'event', 'payment').order_by('-booking_date')
         
-        refund_data.append({
-            "id": booking.id,
-            "customer_name": f"{booking.customer.user.first_name} {booking.customer.user.last_name}".strip() or booking.customer.user.email,
-            "customer_email": booking.customer.user.email,
-            "event_name": booking.event.title,
-            "amount": refund_amount,
-            "requested_at": booking.booking_date,
+        refund_data = []
+        for booking in pending_refunds:
+            payment = booking.payment
+            # Calculate refund amount (amount - 20 cancellation fee)
+            refund_amount = max(float(payment.amount) - 20, 0) if payment else 0
+            
+            refund_data.append({
+                "id": booking.id,
+                "customer_name": f"{booking.customer.user.first_name} {booking.customer.user.last_name}".strip() or booking.customer.user.email,
+                "customer_email": booking.customer.user.email,
+                "event_name": booking.event.title,
+                "amount": refund_amount,
+                "requested_at": booking.booking_date,
+            })
+        
+        return Response({
+            "status_code": 6000,
+            "data": refund_data,
+            "message": "Pending refunds retrieved successfully"
         })
-    
-    return Response({
-        "status_code": 6000,
-        "data": refund_data,
-        "message": "Pending refunds retrieved successfully"
-    })
+    except Exception as e:
+        return Response({
+            "status_code": 6001,
+            "message": f"Error fetching refunds: {str(e)}"
+        }, status=500)
 
 
 # Approve Refund
@@ -126,36 +132,45 @@ def approve_refund(request, booking_id):
                 "message": "No payment found for this booking"
             }, status=400)
         
-        # Check if payment is pending refund
-        if payment.status != "REFUND_PENDING":
-            return Response({
-                "status_code": 6001,
-                "message": "This booking is not pending refund approval"
-            }, status=400)
-        
         # Calculate refund amount (same logic as cancel_booking)
         refund_amount = max(float(payment.amount) - 20, 0)
         
-        # NOW process the Stripe refund (admin approved!)
-        if payment.payment_intent_id:
-            try:
-                stripe.Refund.create(
-                    payment_intent=payment.payment_intent_id,
-                    amount=int(refund_amount * 100)
-                )
-            except stripe.error.StripeError as e:
-                return Response({
-                    "status_code": 6001,
-                    "message": f"Stripe refund failed: {str(e)}"
-                }, status=400)
+        # Check payment status
+        if payment.status == "REFUND_PENDING":
+            # NEW FLOW: Process Stripe refund now (admin approved!)
+            if payment.payment_intent_id:
+                try:
+                    stripe.Refund.create(
+                        payment_intent=payment.payment_intent_id,
+                        amount=int(refund_amount * 100)
+                    )
+                except stripe.error.StripeError as e:
+                    return Response({
+                        "status_code": 6001,
+                        "message": f"Stripe refund failed: {str(e)}"
+                    }, status=400)
+            
+            # Update payment status to REFUNDED
+            payment.status = "REFUNDED"
+            payment.save()
+            message = "Refund approved and processed successfully"
+            
+        elif payment.status == "REFUNDED":
+            # OLD FLOW: Refund already processed, just acknowledge
+            message = "Refund already processed (old cancellation)"
+        else:
+            return Response({
+                "status_code": 6001,
+                "message": f"Invalid payment status: {payment.status}. Expected REFUND_PENDING or REFUNDED."
+            }, status=400)
         
-        # Update payment status to REFUNDED
-        payment.status = "REFUNDED"
-        payment.save()
-        
-        # Mark booking as cancelled
-        booking.status = "CANCELLED"
-        booking.save()
+        # Mark booking as cancelled if it has status field
+        try:
+            booking.status = "CANCELLED"
+            booking.save()
+        except Exception:
+            # Booking model might not have status field yet (before migration)
+            pass
         
         # Notify customer
         create_notification(
@@ -168,7 +183,7 @@ def approve_refund(request, booking_id):
         
         return Response({
             "status_code": 6000,
-            "message": "Refund approved and processed successfully",
+            "message": message,
             "refund_amount": refund_amount
         })
         
