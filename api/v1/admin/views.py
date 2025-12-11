@@ -81,27 +81,15 @@ def get_pending_refunds(request):
     if not request.user.is_admin:
         return Response({"status_code": 6003, "message": "Permission denied"}, status=403)
     
-    # Get bookings with refund requests (status = REFUND_REQUESTED or similar)
-    # Assuming you have a refund_requested field or status
-    pending_refunds = Booking.objects.filter(
-        status="REFUND_REQUESTED"
-    ).select_related('customer__user', 'event', 'payment')
-    
-    refund_data = []
-    for booking in pending_refunds:
-        refund_data.append({
-            "id": booking.id,
-            "customer_name": f"{booking.customer.user.first_name} {booking.customer.user.last_name}".strip() or booking.customer.user.email,
-            "customer_email": booking.customer.user.email,
-            "event_name": booking.event.title,
-            "amount": float(booking.payment.amount) if hasattr(booking, 'payment') and booking.payment else 0,
-            "requested_at": booking.updated_at,
-        })
+    # NOTE: The Booking model doesn't have a status field to track refund requests
+    # Returning empty list for now. To implement this feature, you would need to:
+    # 1. Add a 'status' field to the Booking model with choices like CONFIRMED, REFUND_REQUESTED, CANCELLED
+    # 2. Or add a separate RefundRequest model
     
     return Response({
         "status_code": 6000,
-        "data": refund_data,
-        "message": "Pending refunds retrieved successfully"
+        "data": [],
+        "message": "No pending refunds (refund tracking not implemented in current schema)"
     })
 
 
@@ -138,13 +126,13 @@ def approve_refund(request, booking_id):
                     "message": f"Stripe refund failed: {str(e)}"
                 }, status=400)
         
-        # Update payment and booking status
-        payment.status = "REFUNDED"
-        payment.amount_refunded = refund_amount
+        # Update payment status to FAILED (closest to REFUNDED in current schema)
+        # Note: Payment model doesn't have REFUNDED status or amount_refunded field
+        payment.status = "FAILED"  # Using FAILED to indicate refund processed
         payment.save()
         
-        booking.status = "CANCELLED"
-        booking.save()
+        # Note: Booking model doesn't have a status field
+        # The booking remains in the database but payment status indicates refund
         
         # Notify customer
         create_notification(
@@ -183,9 +171,8 @@ def reject_refund(request, booking_id):
     try:
         booking = Booking.objects.get(id=booking_id)
         
-        # Change status back to confirmed or original status
-        booking.status = "CONFIRMED"
-        booking.save()
+        # Note: Booking model doesn't have a status field
+        # Nothing to update on booking for rejection
         
         # Notify customer
         create_notification(
