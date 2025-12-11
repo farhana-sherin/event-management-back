@@ -330,40 +330,31 @@ def cancel_booking(request, booking_id):
             
             refund_amount = max(float(payment.amount) - 20, 0)
 
-          
-            if payment.payment_intent_id:
-                stripe.Refund.create(
-                    payment_intent=payment.payment_intent_id,
-                    amount=int(refund_amount * 100)  
-                )
-
-          
-            payment.status = "REFUNDED"
-            payment.amount_refunded = refund_amount
+            # DON'T process Stripe refund here - wait for admin approval
+            # Just mark as pending refund
+            payment.status = "REFUND_PENDING"
             payment.save()
 
       
-        booking.status = "CANCELLED"
+        booking.status = "REFUND_REQUESTED"
         booking.save()
 
        
         create_notification(
             customer=booking.customer,
-            title="Booking Cancelled",
-            message=f"Your booking for '{booking.event.title}' has been cancelled. Refund Amount: ₹{refund_amount}",
-            sender_role="ADMIN"
+            title="Cancellation Requested",
+            message=f"Your cancellation request for '{booking.event.title}' has been submitted. Refund of ₹{refund_amount} will be processed after admin approval.",
+            sender_role="SYSTEM"
         )
 
         return Response({
             "status_code": 6000,
-            "message": "Booking cancelled successfully",
+            "message": "Cancellation request submitted. Awaiting admin approval for refund.",
             "refund_amount": refund_amount
         })
 
     except Booking.DoesNotExist:
         return Response({"error": "Booking not found"}, status=404)
-    except stripe.error.StripeError as e:
-        return Response({"error": f"Stripe error: {str(e)}"}, status=400)
     except Exception as e:
         return Response({"error": str(e)}, status=400)
 

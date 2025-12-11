@@ -16,6 +16,7 @@ from customer.models import Customer
 class Booking(models.Model):
     STATUS_CHOICES = [
         ("CONFIRMED", "Confirmed"),
+        ("REFUND_REQUESTED", "Refund Requested"),
         ("CANCELLED", "Cancelled"),
     ]
     
@@ -40,6 +41,7 @@ class Payment(models.Model):
         ("SUCCESS", "Success"),
         ("FAILED", "Failed"),
         ("PENDING", "Pending"),
+        ("REFUND_PENDING", "Refund Pending"),
         ("REFUNDED", "Refunded"),
     ]
 

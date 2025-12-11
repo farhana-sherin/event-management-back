@@ -81,10 +81,10 @@ def get_pending_refunds(request):
     if not request.user.is_admin:
         return Response({"status_code": 6003, "message": "Permission denied"}, status=403)
     
-    # Get bookings where payment status is REFUNDED (customer already cancelled)
-    # These are treated as pending admin approval for refund processing
+    # Get bookings where payment status is REFUND_PENDING (customer requested cancellation)
+    # These are awaiting admin approval for refund processing
     pending_refunds = Booking.objects.filter(
-        payment__status="REFUNDED"
+        payment__status="REFUND_PENDING"
     ).select_related('customer__user', 'event', 'payment').order_by('-booking_date')
     
     refund_data = []
@@ -126,10 +126,17 @@ def approve_refund(request, booking_id):
                 "message": "No payment found for this booking"
             }, status=400)
         
+        # Check if payment is pending refund
+        if payment.status != "REFUND_PENDING":
+            return Response({
+                "status_code": 6001,
+                "message": "This booking is not pending refund approval"
+            }, status=400)
+        
         # Calculate refund amount (same logic as cancel_booking)
         refund_amount = max(float(payment.amount) - 20, 0)
         
-        # Process refund via Stripe if payment_intent_id exists
+        # NOW process the Stripe refund (admin approved!)
         if payment.payment_intent_id:
             try:
                 stripe.Refund.create(
@@ -142,26 +149,26 @@ def approve_refund(request, booking_id):
                     "message": f"Stripe refund failed: {str(e)}"
                 }, status=400)
         
-        # Update payment status to FAILED (closest to REFUNDED in current schema)
-        # Note: Payment model doesn't have REFUNDED status or amount_refunded field
-        payment.status = "FAILED"  # Using FAILED to indicate refund processed
+        # Update payment status to REFUNDED
+        payment.status = "REFUNDED"
         payment.save()
         
-        # Note: Booking model doesn't have a status field
-        # The booking remains in the database but payment status indicates refund
+        # Mark booking as cancelled
+        booking.status = "CANCELLED"
+        booking.save()
         
         # Notify customer
         create_notification(
             customer=booking.customer,
             title="Refund Approved",
-            message=f"Your refund of ₹{refund_amount} for '{booking.event.title}' has been approved.",
+            message=f"Your refund of ₹{refund_amount} for '{booking.event.title}' has been approved and processed.",
             organizer=None,
             sender_role="ADMIN"
         )
         
         return Response({
             "status_code": 6000,
-            "message": "Refund approved successfully",
+            "message": "Refund approved and processed successfully",
             "refund_amount": refund_amount
         })
         
@@ -173,7 +180,7 @@ def approve_refund(request, booking_id):
     except Exception as e:
         return Response({
             "status_code": 6001,
-            "message": f"Error processing refund: {str(e)}"
+            "message": f"Error approving refund: {str(e)}"
         }, status=400)
 
 
