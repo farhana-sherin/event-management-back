@@ -364,8 +364,9 @@ def admin_bookings(request):
     event_id = request.query_params.get("event")
     customer_id = request.query_params.get("customer")
 
-    if status_filter:
-        bookings = bookings.filter(status=status_filter.upper())
+    # TODO: Uncomment after running migrations to add status field to Booking model
+    # if status_filter:
+    #     bookings = bookings.filter(status=status_filter.upper())
     if event_id:
         bookings = bookings.filter(event__id=event_id)
     if customer_id:
