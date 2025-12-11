@@ -207,15 +207,18 @@ def admin_dashboard_summary(request):
 
     total_customers = Customer.objects.count()
     total_organizers = Organizer.objects.count()
+    total_users = total_customers + total_organizers  # Add this
     total_events = Event.objects.count()
     upcoming_events = Event.objects.filter(end_date__gte=today).count()
     total_bookings = Booking.objects.count()
     total_revenue = Payment.objects.filter(status="SUCCESS").aggregate(total=Sum("amount"))["total"] or 0
-    cancelled_bookings = Booking.objects.filter(payment__status="REFUNDED").count()
+    # Fix: Payment model doesn't have REFUNDED status, using FAILED for refunded payments
+    cancelled_bookings = Booking.objects.filter(payment__status="FAILED").count()
 
     return Response({
         "status_code": 6000,
         "data": {
+            "total_users": total_users,  # Add this
             "total_customers": total_customers,
             "total_organizers": total_organizers,
             "total_events": total_events,
