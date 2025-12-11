@@ -383,7 +383,7 @@ def admin_bookings(request):
     if customer_id:
         bookings = bookings.filter(customer__id=customer_id)
 
-    serializer = BookingDetailSerializer(bookings, many=True, context={"request": request})
+    serializer = AdminBookingSerializer(bookings, many=True, context={"request": request})
     return Response({
         "status_code": 6000,
         "data": serializer.data,

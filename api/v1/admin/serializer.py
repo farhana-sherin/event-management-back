@@ -11,7 +11,40 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ['id', 'username', 'email', 'phone', 'is_customer', 'is_eventorganizer', 'is_admin']
 
 
+class AdminBookingSerializer(serializers.ModelSerializer):
+    customer_first_name = serializers.CharField(source='customer.user.first_name', read_only=True)
+    customer_last_name = serializers.CharField(source='customer.user.last_name', read_only=True)
+    customer_email = serializers.CharField(source='customer.user.email', read_only=True)
+    event_title = serializers.CharField(source='event.title', read_only=True)
+    quantity = serializers.IntegerField(source='tickets_count', read_only=True)
+    total_amount = serializers.SerializerMethodField()
+    created_at = serializers.DateTimeField(source='booking_date', read_only=True)
+    payment_status = serializers.SerializerMethodField()
 
+    class Meta:
+        model = Booking
+        fields = [
+            "id",
+            "customer_first_name",
+            "customer_last_name", 
+            "customer_email",
+            "event_title",
+            "quantity",
+            "total_amount",
+            "created_at",
+            "payment_status"
+        ]
+
+    def get_latest_payment(self, obj):
+        return Payment.objects.filter(booking=obj).order_by("-payment_date").first()
+
+    def get_total_amount(self, obj):
+        payment = self.get_latest_payment(obj)
+        return payment.amount if payment else 0
+
+    def get_payment_status(self, obj):
+        payment = self.get_latest_payment(obj)
+        return payment.status if payment else "PENDING"
 
 
 class NotificationSerializer(serializers.ModelSerializer):
@@ -75,5 +108,4 @@ class BannerSerializer(serializers.ModelSerializer):
             # Fallback: construct URL manually if request is not available
             base_url = getattr(settings, 'BASE_URL', 'https://event-management-back-1jat.onrender.com')
             return f"{base_url}{obj.image.url}"
-        return None 
-
+        return None
