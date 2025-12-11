@@ -162,6 +162,9 @@ def stripe_webhook(request):
         try:
             payment = Payment.objects.get(payment_id=session["id"])
             payment.status = "SUCCESS"
+            # CRITICAL: Save payment_intent_id for refunds
+            if session.get("payment_intent"):
+                payment.payment_intent_id = session["payment_intent"]
             payment.save()
 
             booking = payment.booking
@@ -213,6 +216,9 @@ def verify_payment(request, booking_id, session_id):
         # If Stripe session confirms payment, update local record
         if session and session.payment_status == "paid" and payment.status != "SUCCESS":
             payment.status = "SUCCESS"
+            # CRITICAL: Save payment_intent_id for refunds
+            if session.payment_intent:
+                payment.payment_intent_id = session.payment_intent
             payment.save()
 
         # Ensure booking has QR code text generated
