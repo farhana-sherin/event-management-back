@@ -14,11 +14,17 @@ from customer.models import Customer
 
 # Booking model
 class Booking(models.Model):
+    STATUS_CHOICES = [
+        ("CONFIRMED", "Confirmed"),
+        ("CANCELLED", "Cancelled"),
+    ]
+    
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name="bookings")
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="bookings")
     tickets_count = models.PositiveIntegerField(default=1)
     booking_date = models.DateTimeField(auto_now_add=True)
     qr_code_text = models.TextField(blank=True, null=True) # store QR code
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="CONFIRMED")
 
     class Meta:
         db_table = "booking_table"
