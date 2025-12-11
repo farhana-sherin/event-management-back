@@ -8,9 +8,9 @@ app_name = 'admin_api'
 urlpatterns = [
     path('admin/login/', views.admin_login, name='admin_login'),
     path('admin/dashboard-summary/', views.admin_dashboard_summary,name='admin_dashboard_summary'),
-    path('users/', views.user_list, name='user-list'),          # GET all users
-    path('users/<int:pk>/', views.user_delete, name='user-delete'), # DELETE
-    path('users/<int:pk>/edit/', views.user_update, name='user-update'),
+    path('admin/users/', views.user_list, name='user-list'),          # GET all users
+    path('admin/users/<int:pk>/', views.user_delete, name='user-delete'), # DELETE
+    path('admin/users/<int:pk>/edit/', views.user_update, name='user-update'),
     path('admin/bookings/', views.admin_bookings, name='admin-bookings'), 
     path('admin/cancelled/<int:booking_id>/', views.admin_cancel_booking, name='admin-bookings'), 
     path('admin/notifications/', views.admin_notifications, name='admin_notifications'),
@@ -21,13 +21,13 @@ urlpatterns = [
     path('admin/delete/notification/', views.delete_all_notifications, name='delete-notification'),
     path("admin/support-tickets/delete-all/", views.delete_all_support_tickets, name="delete-supportList"),
     path("admin/organizer/income/", views.admin_organizer_income, name="organizer-income"),
-    path("events/<int:pk>/approve/", views.approve_event),
-    path("events/<int:pk>/deactivate/", views.deactivate_event),
-    path("events/<int:pk>/cancel/", views.cancel_event),
-    path("events/pending/", views.pending_events_admin),
-    path("events/upcoming/", views.upcoming_events_admin),
-    path("events/past/", views.past_events_admin),
-    path("events/cancelled/", views.cancelled_events_admin),
+    path("admin/events/<int:pk>/approve/", views.approve_event),
+    path("admin/events/<int:pk>/deactivate/", views.deactivate_event),
+    path("admin/events/<int:pk>/cancel/", views.cancel_event),
+    path("admin/events/pending/", views.pending_events_admin),
+    path("admin/events/upcoming/", views.upcoming_events_admin),
+    path("admin/events/past/", views.past_events_admin),
+    path("admin/events/cancelled/", views.cancelled_events_admin),
     path('admin/banner/create/', views.create_banner, name="create_banner"),
     
 
