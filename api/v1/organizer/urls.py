@@ -33,9 +33,9 @@ urlpatterns = [
     path("notifications/", views.organizer_notifications,name="organizer-notification"),
     path("event/ratings/", views.organizer_event_ratings, name="organizer_event_ratings"),
 
+    path("profile/", views.organizer_profile, name="organizer_profile"),
+    path("profile/update/", views.update_organizer_profile, name="update_organizer_profile"),
     path("logout/",views.logout,name="logout"),
-   
-
 
     
 ]

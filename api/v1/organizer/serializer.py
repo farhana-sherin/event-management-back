@@ -68,3 +68,24 @@ class EventSerializer(serializers.ModelSerializer):
             except Customer.DoesNotExist:
                 return False
         return False
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ["id", "email", "username", "first_name", "last_name", "phone"]
+
+class OrganizerProfileSerializer(serializers.ModelSerializer):
+    user = UserSerializer()
+
+    class Meta:
+        model = Organizer
+        fields = ["id", "user"]
+
+    def update(self, instance, validated_data):
+        user_data = validated_data.pop('user', None)
+        if user_data:
+            user = instance.user
+            for attr, value in user_data.items():
+                setattr(user, attr, value)
+            user.save()
+        return super().update(instance, validated_data)

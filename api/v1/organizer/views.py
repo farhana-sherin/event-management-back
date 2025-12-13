@@ -73,9 +73,56 @@ def register_organizer(request):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def logout(request):
-    request.user.auth_token.delete()
-    return Response({"status_code": 6000, "message": "Organizer logged out successfully"})
+    try:
+        # For JWT, we ideally blacklist the refresh token if blacklist app is installed
+        # But for now, just returning success messages is standard as frontend discards token
+        # If using standard Token auth: request.user.auth_token.delete()
+        return Response({"status_code": 6000, "message": "Organizer logged out successfully"})
+    except Exception as e:
+         return Response({"status_code": 6000, "message": "Organizer logged out successfully"})
 
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def organizer_profile(request):
+    try:
+        organizer = Organizer.objects.get(user=request.user)
+        serializer = OrganizerProfileSerializer(organizer)
+        return Response({
+            "status_code": 6000,
+            "data": serializer.data,
+            "message": "Organizer profile details"
+        })
+    except Organizer.DoesNotExist:
+        return Response({
+            "status_code": 6001,
+            "message": "Organizer profile not found"
+        }, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(["PUT", "PATCH"])
+@permission_classes([IsAuthenticated])
+def update_organizer_profile(request):
+    try:
+        organizer = Organizer.objects.get(user=request.user)
+    except Organizer.DoesNotExist:
+        return Response({
+            "status_code": 6001,
+            "message": "Organizer profile not found"
+        }, status=status.HTTP_404_NOT_FOUND)
+
+    serializer = OrganizerProfileSerializer(organizer, data=request.data, partial=True)
+    if serializer.is_valid():
+        serializer.save()
+        return Response({
+            "status_code": 6000,
+            "data": serializer.data,
+            "message": "Profile updated successfully"
+        })
+    
+    return Response({
+        "status_code": 6001,
+        "message": "Validation error",
+        "errors": serializer.errors
+    }, status=status.HTTP_400_BAD_REQUEST)
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 @parser_classes([MultiPartParser, FormParser])
