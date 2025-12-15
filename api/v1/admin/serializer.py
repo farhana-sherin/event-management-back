@@ -62,17 +62,6 @@ class NotificationSerializer(serializers.ModelSerializer):
         return "Unknown"
 
 
-class SupportTicketSerializer(serializers.ModelSerializer):
-    customer_email = serializers.SerializerMethodField()
-
-    class Meta:
-        model = SupportTicket
-        fields = ['id', 'subject', 'customer_email', 'status', 'created_at', 'updated_at']
-
-    def get_customer_email(self, obj):
-        return obj.customer.user.email if obj.customer and obj.customer.user else "Unknown"
-
-
 class TicketReplySerializer(serializers.ModelSerializer):
     sender_email = serializers.SerializerMethodField()
 
@@ -82,6 +71,18 @@ class TicketReplySerializer(serializers.ModelSerializer):
 
     def get_sender_email(self, obj):
         return obj.sender.email if obj.sender else "Unknown"
+
+
+class SupportTicketSerializer(serializers.ModelSerializer):
+    customer_email = serializers.SerializerMethodField()
+    replies = TicketReplySerializer(many=True, read_only=True)
+
+    class Meta:
+        model = SupportTicket
+        fields = ['id', 'subject', 'message', 'customer_email', 'status', 'created_at', 'updated_at', 'replies']
+
+    def get_customer_email(self, obj):
+        return obj.customer.user.email if obj.customer and obj.customer.user else "Unknown"
 
 
 class SendNotificationSerializer(serializers.Serializer):
