@@ -30,6 +30,7 @@ urlpatterns = [
     path('past-events/',views.past_events, name='customer-past-events'),
     path("tickets/create/", views.create_ticket, name="create_ticket"),
     path("tickets/my/", views.my_tickets, name="my_tickets"),
+    path("tickets/<int:ticket_id>/reply/", views.reply_ticket, name="customer_reply_ticket"),
     path("faqs/", views.list_faqs, name="list_faqs"),
    
     path("banners/", views.banner_list, name="banner-list"),

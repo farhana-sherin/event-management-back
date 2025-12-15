@@ -77,7 +77,28 @@ class PaymentSerializer(serializers.ModelSerializer):
         return None
 
 
+class TicketReplySerializer(serializers.ModelSerializer):
+    sender_email = serializers.SerializerMethodField()
+    sender_role = serializers.SerializerMethodField()
+
+    class Meta:
+        model = TicketReply
+        fields = ['id', 'ticket', 'sender', 'sender_email', 'sender_role', 'message', 'created_at']
+
+    def get_sender_email(self, obj):
+        return obj.sender.email if obj.sender else "Unknown"
+    
+    def get_sender_role(self, obj):
+        if obj.sender.is_admin:
+            return "Admin"
+        elif obj.sender.is_customer:
+            return "Customer"
+        return "User"
+
+
 class SupportTicketSerializer(serializers.ModelSerializer):
+    replies = TicketReplySerializer(many=True, read_only=True)
+    
     class Meta:
         model = SupportTicket
         fields = "__all__"

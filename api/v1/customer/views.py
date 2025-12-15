@@ -612,6 +612,29 @@ def my_tickets(request):
     return Response(serializer.data)
 
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def reply_ticket(request, ticket_id):
+    try:
+        customer = Customer.objects.get(user=request.user)
+        ticket = SupportTicket.objects.get(id=ticket_id, customer=customer)
+    except (Customer.DoesNotExist, SupportTicket.DoesNotExist):
+        return Response({"error": "Ticket not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    message = request.data.get('message')
+    if not message:
+        return Response({"error": "Message is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+    reply = TicketReply.objects.create(ticket=ticket, sender=request.user, message=message)
+    serializer = TicketReplySerializer(reply)
+    
+    # Optional: Update ticket status or updated_at
+    ticket.updated_at = timezone.now()
+    ticket.save()
+
+    return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
 
 
 
