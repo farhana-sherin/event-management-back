@@ -6,6 +6,31 @@ import dj_database_url
 
 load_dotenv()
 
+# Sanitized Database URL for Supabase/Heroku
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+
+# Handle Supabase/Render compatibility
+# Render requires IPv4 (Pooler URL), but psycopg2 crashes with 'pgbouncer=true'.
+# We must strip 'pgbouncer' from the query parameters while keeping the URL intact.
+if "pgbouncer=true" in DATABASE_URL:
+    from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
+    
+    # Parse the URL
+    parts = list(urlparse(DATABASE_URL))
+    query = parse_qs(parts[4])
+    
+    # Remove incompatible parameters
+    if 'pgbouncer' in query:
+        del query['pgbouncer']
+    
+    # Reconstruct the URL
+    parts[4] = urlencode(query, doseq=True)
+    DATABASE_URL = urlunparse(parts)
+
+# Ensure the sanitized URL is used by dj_database_url
+os.environ["DATABASE_URL"] = DATABASE_URL
+print("Final DATABASE_URL =", DATABASE_URL)
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv("SECRET_KEY")
 DEBUG = os.getenv("DEBUG", "False") == "True"
@@ -69,26 +94,14 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'EventManagment.wsgi.application'
 
-# DATABASES
-if DEBUG:
-    DATABASES = {
-        'default': {
-            "ENGINE": "django.db.backends.postgresql_psycopg2",
-            "NAME": "EventManagement",
-            "USER": "farhana",
-            "PASSWORD": "1234",
-            "HOST": "localhost",
-            "PORT": "5432",
-        }
-    }
-else:
-    DATABASES = {
-        "default": dj_database_url.config(
-            default=os.getenv("DATABASE_URL"),
-            conn_max_age=600,
-            ssl_require=True
-        )
-    }
+DATABASES = {
+    "default": dj_database_url.config(
+        default=DATABASE_URL,
+        conn_max_age=600,
+        ssl_require=True
+    )
+}
+
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
