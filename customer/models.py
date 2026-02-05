@@ -1,8 +1,6 @@
 from django.db import models
-
 from users.models import User
-from customer.models import *
-from organizer.models import *
+from organizer.models import Event
 
 
 class Customer(models.Model):

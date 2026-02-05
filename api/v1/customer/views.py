@@ -557,14 +557,16 @@ def past_events(request):
    
     events = []
     for booking in bookings:
-        if booking.event.end_at < timezone.now():   
-            events.append(booking.event)
-        
-        context={
-            "request": request
-        }
+        # Use the Event model's end_date (date field) instead of removed `end_at`.
+        try:
+            if booking.event.end_date and booking.event.end_date < timezone.now().date():
+                events.append(booking.event)
+        except Exception:
+            # If event object is malformed or missing dates, skip safely
+            continue
 
- 
+    context = {"request": request}
+
     serializer = EventSerializer(events, many=True, context=context)
     return Response({
         "status": "success",
